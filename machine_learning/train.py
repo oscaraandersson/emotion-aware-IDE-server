@@ -12,27 +12,6 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
-data = 'valence'
-# data = 'arousal'
-
-if data == 'arousal':
-    df = pd.read_csv('data/SAM_arousal.csv')
-    class_dict = {'high': 1, 'low': 0}
-else:
-    df = pd.read_csv('data/SAM_valence.csv')
-    class_dict = {'positive': 1, 'negative': 0}
-
-X = df.iloc[:, 34:len(df.columns)-1].values
-y = df.iloc[:, -1].map(class_dict).values
-
-x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
-
-#feature scaling
-sc = StandardScaler()
-x_train = sc.fit_transform(x_train)
-x_test = sc.transform(x_test)
-
-#dataset class
 class dataset(Dataset):
     def __init__(self,x,y):
         self.x = torch.tensor(x,dtype=torch.float32)
@@ -45,11 +24,6 @@ class dataset(Dataset):
         return self.length
 
 
-#training and testing tensors
-train_set = dataset(x_train,y_train)
-test_set = dataset(x_test,y_test)
-
-#defining the network
 class Model(nn.Module):
     def __init__(self):
         super(Model,self).__init__()
@@ -59,45 +33,71 @@ class Model(nn.Module):
         x = torch.sigmoid(self.fc1(x))
         return x
 
+train = False
 
-#some parameters
-model = Model()
-learning_rate = 0.01
-optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
-epochs = 1500
-criterion = nn.BCELoss()
+if train == True:
+    data = 'valence'
+    # data = 'arousal'
 
-#data loader
-train_loader = DataLoader(train_set,shuffle=True,batch_size=train_set.__len__())
-test_loader = DataLoader(test_set,batch_size=test_set.__len__())
+    if data == 'arousal':
+        df = pd.read_csv('data/SAM_arousal.csv')
+        class_dict = {'high': 1, 'low': 0}
+    else:
+        df = pd.read_csv('data/SAM_valence.csv')
+        class_dict = {'positive': 1, 'negative': 0}
 
-#forward pass
-losses = []
-for i in range(epochs):
-    for j,(x_train,y_train) in enumerate(train_loader):
-        #get the prediction
-        y_pred = model(x_train)
+    X = df.iloc[:, 34:len(df.columns)-1].values
+    y = df.iloc[:, -1].map(class_dict).values
 
-        #losses
-        loss = criterion(y_pred,y_train.reshape(-1,1))
-        losses.append(loss.detach().numpy())
-        #backprop
-        optimizer.zero_grad()
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
 
-        loss.backward()
-        optimizer.step()
-    #print loss
-    if i%100 == 0:
-        print("epoch : {} loss: {}".format(i,loss))
+    #feature scaling
+    sc = StandardScaler()
+    x_train = sc.fit_transform(x_train)
+    x_test = sc.transform(x_test)
 
-#testset
-x_test,y_test = next(iter(test_loader))
-y_pred = model(x_test)
-n_correct_predictions = ((y_pred.round().reshape(-1) == y_test).sum())
-total_predictions = float(y_pred.shape[0])
-print('accuracy of the model on test set :', n_correct_predictions / total_predictions)
-save = input('Save model? y for yes: ')
+    #training and testing tensors
+    train_set = dataset(x_train,y_train)
+    test_set = dataset(x_test,y_test)
 
-if save == 'y':
-    torch.save(model.state_dict(), f'models/{data}.pth')
+    #some parameters
+    model = Model()
+    learning_rate = 0.01
+    optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
+    epochs = 1500
+    criterion = nn.BCELoss()
+
+    #data loader
+    train_loader = DataLoader(train_set,shuffle=True,batch_size=train_set.__len__())
+    test_loader = DataLoader(test_set,batch_size=test_set.__len__())
+
+    #forward pass
+    losses = []
+    for i in range(epochs):
+        for j,(x_train,y_train) in enumerate(train_loader):
+            #get the prediction
+            y_pred = model(x_train)
+
+            #losses
+            loss = criterion(y_pred,y_train.reshape(-1,1))
+            losses.append(loss.detach().numpy())
+            #backprop
+            optimizer.zero_grad()
+
+            loss.backward()
+            optimizer.step()
+        #print loss
+        if i%100 == 0:
+            print("epoch : {} loss: {}".format(i,loss))
+
+    #testset
+    x_test,y_test = next(iter(test_loader))
+    y_pred = model(x_test)
+    n_correct_predictions = ((y_pred.round().reshape(-1) == y_test).sum())
+    total_predictions = float(y_pred.shape[0])
+    print('accuracy of the model on test set :', n_correct_predictions / total_predictions)
+    save = input('Save model? y for yes: ')
+
+    if save == 'y':
+        torch.save(model.state_dict(), f'models/{data}.pth')
 
