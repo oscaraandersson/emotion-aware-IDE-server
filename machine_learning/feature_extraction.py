@@ -47,35 +47,35 @@ class FeatureExtractor():
 
     # EDA =================================================
     def get_mean_SCL(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_AUC_Phasic(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_min_peak_amplitude(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_max_peak_amplitude(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_mean_phasic_peak(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_sum_phasic_peak_amplitude(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     # BVP ===============================================
     def get_difference_BVPpeaks_ampl(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_mean_BVPpeaks_ampl(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_min_BVPpeaks_ampl(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_max_BVPpeaks_ampl(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
 
     def get_sum_peak_ampl(self):
-        return np.array([0, 0, 0, 0, 0, 0])
+        return 0
