@@ -40,8 +40,5 @@
 		"glob": "^7.2.0",
 		"mocha": "^9.2.1",
 		"typescript": "^4.5.5"
-	},
-	"dependencies": {
-		"node-fetch": "^2.6.7"
 	}
 }
