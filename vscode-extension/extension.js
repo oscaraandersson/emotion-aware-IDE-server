@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 //const { once } = require('events');
 const vscode = require('vscode');
+const net = require('net');
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -45,7 +46,38 @@ function activate(context) {
 
 		// runs displaymessage with message
 		displayMessage(message);
+		client.write(message);
 	}));
+
+
+
+	// port used for communication
+	const port1 = 1337;
+
+	// initialize client
+	var client = new net.Socket();
+
+	// connect client
+	client.connect(port1, '127.0.0.1', () => {
+		console.log('Connected');
+		if (client) {
+			client.write('Hello, server! Love, Client.');
+		}
+	});
+
+	// on data received run function
+	client.on('data', (data) => {
+
+		// if nulls disconnect
+		if (data == "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"){
+			console.log("Disconnecting client.")
+			client.destroy();
+
+		// write message
+		} else {
+			displayMessage('Received: ' + data);
+		}
+	});
 }
 
 
