@@ -16,11 +16,9 @@ function activate(context) {
 	console.log('Congratulations, your extension "emotionawareide" is now active!');
 
 	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with  registerCommand
-	// The commandId parameter must match the command field in package.json
 	let disposable = vscode.commands.registerCommand('emotionawareide.start_dashboard', () => {
-		// The code you place here will be executed every time your command is executed
 
+		// creates a webview
 		const panel = vscode.window.createWebviewPanel(
 			"dashboard",
 			"Dashboard",
@@ -30,23 +28,35 @@ function activate(context) {
 			}
 		);
 
+		// gets the html to display
 		panel.webview.html = getWebviewContent();
 	});
 
+	// pushes command to context
 	context.subscriptions.push(disposable);
 
-	context.subscriptions.push(vscode.commands.registerCommand('emotionawareide.show_message', () => {
-		displayMessage("Hello World!");
+	// pushes command to context
+	context.subscriptions.push(vscode.commands.registerCommand('emotionawareide.show_message', async () => {
+
+		// gets message from user input
+		let message = await vscode.window.showInputBox({
+			placeHolder: "Write a message"
+		});
+
+		// runs displaymessage with message
+		displayMessage(message);
 	}));
 }
 
 
 function displayMessage(message) {
+	// displays message as popup
 	vscode.window.showInformationMessage(message);
 }
 
 
 function getWebviewContent() {
+	// returns html as a iframe
 	return `<!DOCTYPE html>
 	<html>
 	  
