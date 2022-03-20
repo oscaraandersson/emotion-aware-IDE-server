@@ -34,6 +34,15 @@ function activate(context) {
 	});
 
 	context.subscriptions.push(disposable);
+
+	context.subscriptions.push(vscode.commands.registerCommand('emotionawareide.show_message', () => {
+		displayMessage("Hello World!");
+	}));
+}
+
+
+function displayMessage(message) {
+	vscode.window.showInformationMessage(message);
 }
 
 
