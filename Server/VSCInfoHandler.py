@@ -7,6 +7,7 @@ import asyncio
 import struct
 from VSCServerManager import ServerManager
 import time
+import threading
 
 sys.path.append("../machine_learning")
 sys.path.append("../")
@@ -62,15 +63,16 @@ class VSCDataHandler:
             arousal = 1
         msg += bytearray([arousal])
         msg += bytearray(struct.pack("f", pred["arousal"]["probability"]))
-        print(pred["arousal"]["probability"])
         valence = 0
         if pred["valence"]["class"] == "positive":
             valence = 1
         msg += bytearray([valence])
         msg += bytearray(struct.pack("f", pred["valence"]["probability"]))
-        print(pred["valence"]["probability"])
         msg += self.flags
         return msg
+    
+    def quit(self):
+        self.running = False
 
     def instance(self):
         counter = 0
@@ -97,8 +99,13 @@ def main(argv):
     except Exception:
         print("Invalid port")
         return None
-    servr = VSCDataHandler(port)
-    servr.instance()
+    servr = VSCDataHandler(port, 1/30)
+    server_thread = threading.Thread(target=servr.instance)
+    server_thread.start()
+    inp = input("INPUT: ")
+    print(inp)
+    servr.quit()
+    server_thread.join()
 
     
 
