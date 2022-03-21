@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 //const { once } = require('events');
 const vscode = require('vscode');
+const net = require('net');
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -16,11 +17,9 @@ function activate(context) {
 	console.log('Congratulations, your extension "emotionawareide" is now active!');
 
 	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with  registerCommand
-	// The commandId parameter must match the command field in package.json
 	let disposable = vscode.commands.registerCommand('emotionawareide.start_dashboard', () => {
-		// The code you place here will be executed every time your command is executed
 
+		// creates a webview
 		const panel = vscode.window.createWebviewPanel(
 			"dashboard",
 			"Dashboard",
@@ -30,14 +29,66 @@ function activate(context) {
 			}
 		);
 
+		// gets the html to display
 		panel.webview.html = getWebviewContent();
 	});
 
+	// pushes command to context
 	context.subscriptions.push(disposable);
+
+	// pushes command to context
+	context.subscriptions.push(vscode.commands.registerCommand('emotionawareide.show_message', async () => {
+
+		// gets message from user input
+		let message = await vscode.window.showInputBox({
+			placeHolder: "Write a message"
+		});
+
+		// runs displaymessage with message
+		displayMessage(message);
+		client.write(message);
+	}));
+
+
+
+	// port used for communication
+	const port1 = 1337;
+
+	// initialize client
+	var client = new net.Socket();
+
+	// connect client
+	client.connect(port1, '127.0.0.1', () => {
+		console.log('Connected');
+		if (client) {
+			client.write('Hello, server! Love, Client.');
+		}
+	});
+
+	// on data received run function
+	client.on('data', (data) => {
+
+		// if nulls disconnect
+		if (data == "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"){
+			console.log("Disconnecting client.")
+			client.destroy();
+
+		// write message
+		} else {
+			displayMessage('Received: ' + data);
+		}
+	});
+}
+
+
+function displayMessage(message) {
+	// displays message as popup
+	vscode.window.showInformationMessage(message);
 }
 
 
 function getWebviewContent() {
+	// returns html as a iframe
 	return `<!DOCTYPE html>
 	<html>
 	  
