@@ -52,7 +52,8 @@ function activate(context) {
 
 
 	// port used for communication
-	const port1 = 1337;
+	const port1 = vscode.workspace.getConfiguration('emotionawareide').get('port');
+	console.log(port1);
 
 	// initialize client
 	var client = new net.Socket();
@@ -78,6 +79,7 @@ function activate(context) {
 			displayMessage('Received: ' + data);
 		}
 	});
+
 }
 
 

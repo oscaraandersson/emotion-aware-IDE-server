@@ -23,7 +23,17 @@
 				"command": "emotionawareide.show_message",
 				"title": "Show message"
 			}
-		]
+		],
+		"configuration": {
+			"title": "EmotionAwareIDE",
+			"properties": {
+				"emotionawareide.port": {
+					"type": "number",
+					"default": 1337,
+					"description": "The port used for receiving data."
+				}
+			}	
+		}
 	},
 	"scripts": {
 		"lint": "eslint .",
