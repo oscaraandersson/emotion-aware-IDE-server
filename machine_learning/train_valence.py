@@ -25,9 +25,9 @@ class dataset(Dataset):
         return self.length
 
 
-class Model(nn.Module):
+class ValenceModel(nn.Module):
     def __init__(self):
-        super(Model,self).__init__()
+        super(ValenceModel,self).__init__()
         self.fc1 = nn.Linear(19,10)
         self.fc2 = nn.Linear(10, 1)
 
@@ -36,19 +36,14 @@ class Model(nn.Module):
         x = torch.sigmoid(self.fc2(x))
         return x
 
-train = True
-# train = False
+# train = True
+train = False
 
 if train == True:
-    # data = 'valence'
-    data = 'arousal'
+    data = 'valence'
 
-    if data == 'arousal':
-        df = pd.read_csv('data/SAM_arousal.csv')
-        class_dict = {'high': 1, 'low': 0}
-    else:
-        df = pd.read_csv('data/SAM_valence.csv')
-        class_dict = {'positive': 1, 'negative': 0}
+    df = pd.read_csv('data/SAM_valence.csv')
+    class_dict = {'positive': 1, 'negative': 0}
 
     X = df.iloc[:, 34:len(df.columns)-1].values
     y = df.iloc[:, -1].map(class_dict).values
@@ -68,8 +63,8 @@ if train == True:
     model = Model()
     learning_rate = 0.01
     optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
-    epochs = 2000
-    criterion = nn.BCELoss()
+    epochs = 3000
+    loss_function = nn.BCELoss()
 
     #data loader
     train_loader = DataLoader(train_set,shuffle=True,batch_size=train_set.__len__())
@@ -83,7 +78,7 @@ if train == True:
             y_pred = model(x_train)
 
             #losses
-            loss = criterion(y_pred,y_train.reshape(-1,1))
+            loss = loss_function(y_pred,y_train.reshape(-1,1))
             losses.append(loss.detach().numpy())
             #backprop
             optimizer.zero_grad()
