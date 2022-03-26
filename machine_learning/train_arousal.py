@@ -25,30 +25,25 @@ class dataset(Dataset):
         return self.length
 
 
-class Model(nn.Module):
+class ArousalModel(nn.Module):
     def __init__(self):
-        super(Model,self).__init__()
-        self.fc1 = nn.Linear(19,10)
-        self.fc2 = nn.Linear(10, 1)
+        super(ArousalModel,self).__init__()
+        self.fc1 = nn.Linear(19,2)
+        self.fc2 = nn.Linear(2, 1)
 
     def forward(self,x):
         x = torch.sigmoid(self.fc1(x))
         x = torch.sigmoid(self.fc2(x))
         return x
 
-train = True
-# train = False
+# train = True
+train = False
 
 if train == True:
-    # data = 'valence'
     data = 'arousal'
 
-    if data == 'arousal':
-        df = pd.read_csv('data/SAM_arousal.csv')
-        class_dict = {'high': 1, 'low': 0}
-    else:
-        df = pd.read_csv('data/SAM_valence.csv')
-        class_dict = {'positive': 1, 'negative': 0}
+    df = pd.read_csv('data/SAM_arousal.csv')
+    class_dict = {'high': 1, 'low': 0}
 
     X = df.iloc[:, 34:len(df.columns)-1].values
     y = df.iloc[:, -1].map(class_dict).values
@@ -68,7 +63,7 @@ if train == True:
     model = Model()
     learning_rate = 0.01
     optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
-    epochs = 2000
+    epochs = 10000
     criterion = nn.BCELoss()
 
     #data loader
