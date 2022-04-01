@@ -22,6 +22,10 @@
 			{
 				"command": "emotionawareide.show_message",
 				"title": "Show message"
+			},
+			{
+				"command": "emotionawareide.start_survey",
+				"title": "Start Survey"
 			}
 		],
 		"configuration": {
