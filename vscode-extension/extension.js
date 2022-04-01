@@ -16,21 +16,7 @@ function activate(context) {
 	console.log('Congratulations, your extension "emotionawareide" is now active!');
 
 	// The command has been defined in the package.json file
-	let disposable = vscode.commands.registerCommand('emotionawareide.start_dashboard', () => {
-
-		// creates a webview
-		const panel = vscode.window.createWebviewPanel(
-			"dashboard",
-			"Dashboard",
-			vscode.ViewColumn.One,
-			{
-				enableScripts: true
-			}
-		);
-
-		// gets the html to display
-		panel.webview.html = getWebviewContent();
-	});
+	let disposable = vscode.commands.registerCommand('emotionawareide.start_dashboard', show_web_view);
 
 	// pushes command to context
 	context.subscriptions.push(disposable);
@@ -51,6 +37,12 @@ function activate(context) {
 
 	context.subscriptions.push(vscode.commands.registerCommand('emotionawareide.start_survey', start_survey));
 
+
+	vscode.commands.registerCommand("show_web_view", show_web_view);
+	let statusbar_item = vscode.window.createStatusBarItem(1, 1);
+	statusbar_item.text = "Happy";
+	statusbar_item.command = "show_web_view";
+	statusbar_item.show();
 
 	// port used for communication
 	const port1 = vscode.workspace.getConfiguration('emotionawareide').get('port');
@@ -82,6 +74,22 @@ function activate(context) {
 		}
 	});
 
+}
+
+
+function show_web_view() {
+	// creates a webview
+	const panel = vscode.window.createWebviewPanel(
+		"dashboard",
+		"Dashboard",
+		vscode.ViewColumn.One,
+		{
+			enableScripts: true
+		}
+	);
+
+	// gets the html to display
+	panel.webview.html = getWebviewContent();
 }
 
 
