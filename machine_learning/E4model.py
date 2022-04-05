@@ -1,11 +1,9 @@
 import torch
 import os
+import sys
 
 import numpy as np
 from .train_multiclass import Model
-from .train_valence import ValenceModel
-from .train_arousal import ArousalModel
-import sys
 import feature_extraction
 
 dirname = os.path.dirname(os.path.realpath(__file__))
