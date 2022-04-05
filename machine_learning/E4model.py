@@ -2,6 +2,7 @@ import torch
 import os
 
 import numpy as np
+from .train_multiclass import Model
 from .train_valence import ValenceModel
 from .train_arousal import ArousalModel
 import sys
@@ -12,29 +13,19 @@ class E4model():
     def __init__(self, baseline_values):
         self.fe = feature_extraction.FeatureExtractor(baseline_values)
 
-        self.arousal_model = ArousalModel()
-        self.arousal_model.load_state_dict(torch.load(dirname + '/models/arousal.pth'))
+        self.model = Model()
+        self.model.load_state_dict(torch.load(dirname + '/models/emotion_classifier.pth'))
 
-        self.valence_model = ValenceModel()
-        self.valence_model.load_state_dict(torch.load(dirname + '/models/valence.pth'))
-        
+    # [1, 0, 0, 0] : high, negative 
+    # [0, 1, 0, 0] : high, positive 
+    # [0, 0, 1, 0] : low, negative
+    # [0, 0, 0, 1] : high, positive 
+
+    # example prediction will look like:
+    # [0.0025, 0.7988, 0.0924, 0.0667]
+    # where numbers represent certainty -> first quadrant of the circle with 80% certainty
+
     def predict(self, signal_values):
         instance = self.fe.create_instance(signal_values)
-        arousal_prediction = self.arousal_model(torch.tensor(instance, dtype=torch.float32))
-        valence_prediction = self.valence_model(torch.tensor(instance, dtype=torch.float32))
-        if int(arousal_prediction) == 1:
-            arousal_class = 'high'
-        else:
-            arousal_class = 'low'
-            arousal_accuracy = 1 - arousal_prediction
-
-        if int(valence_prediction) == 1:
-            valence_class = 'positive'
-        else:
-            valence_class = 'negative'
-            valence_accuracy = 1 - valence_prediction
-        return {'arousal': 
-                   {'class': arousal_class, 'probability': arousal_prediction.item()}, 
-                'valence':
-                   {'class': valence_class, 'probability': valence_prediction.item()}}
-
+        prediction = self.model(torch.tensor(instance, dtype=torch.float32))
+        return prediction
