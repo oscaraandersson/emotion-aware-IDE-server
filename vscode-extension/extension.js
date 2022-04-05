@@ -4,6 +4,9 @@
 const vscode = require('vscode');
 const net = require('net');
 
+
+let statusbar_item;
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 /**
@@ -39,8 +42,7 @@ function activate(context) {
 
 
 	vscode.commands.registerCommand("show_web_view", show_web_view);
-	let statusbar_item = vscode.window.createStatusBarItem(1, 1);
-	statusbar_item.text = "Happy";
+	statusbar_item = vscode.window.createStatusBarItem(1, 1);
 	statusbar_item.command = "show_web_view";
 	statusbar_item.show();
 
@@ -69,11 +71,16 @@ function activate(context) {
 
 		// write message
 		} else {
-			let message = convert_message(data)
+			let message = convert_message(data);
 			displayMessage(message);
 		}
 	});
 
+}
+
+
+function update_statusbar_label(_label) {
+	statusbar_item.text = _label;
 }
 
 
