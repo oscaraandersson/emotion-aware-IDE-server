@@ -143,20 +143,3 @@ class TestAction(Action):
     
     async def _execute(self):
         print(await self._msg_client_wait("Tjabba"))
-
-class DepTest(Action):
-    def __init__(self, frequency, serv):
-        super().__init__(frequency, serv)
-        self.NAME = "TST2"
-        self.ACTIONS = ["TEST"]
-class Dep2Test(Action):
-    def __init__(self, frequency, serv):
-        super().__init__(frequency, serv)
-        self.NAME = "TST3"
-        self.ACTIONS = ["TST2", "TEST"]
-
-class Dep3Test(Action):
-    def __init__(self, frequency, serv):
-        super().__init__(frequency, serv)
-        self.NAME = "TST4"
-        self.ACTIONS = ["TST3"]
