@@ -4,7 +4,8 @@ import os
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 import torch
 from torch import nn
@@ -67,7 +68,7 @@ if train == True:
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
 
     #feature scaling
-    sc = StandardScaler()
+    sc = MinMaxScaler()
     x_train = sc.fit_transform(x_train)
     x_test = sc.transform(x_test)
 
@@ -79,7 +80,7 @@ if train == True:
     model = Model()
     learning_rate = 0.01
     optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
-    epochs = 400
+    epochs = 600
     criterion = nn.BCELoss()
 
     #data loader
@@ -123,18 +124,15 @@ if train == True:
     print('accuracy of the model on test set : ', correct / total)
 
     # plot loss
-    fig = plt.figure(figsize=(9, 5))
-    ax = fig.add_subplot()
-    ax.plot(losses)
-    ax.set_title('loss vs epochs')
-    ax.set_xlabel('epochs')
-    ax.set_ylabel('loss')
+    fig, ax = plt.subplots(2, 1)
+    ax[0].plot(losses)
+    ax[0].set_title('loss and accuracy vs epochs')
+    ax[0].set_xlabel('epochs')
+    ax[0].set_ylabel('loss')
 
-    bx = fig.add_subplot()
-    bx.plot(accuracies)
-    bx.set_title('accurace vs epochs')
-    bx.set_xlabel('epochs')
-    bx.set_ylabel('accuracy')
+    ax[1].plot(accuracies)
+    ax[1].set_xlabel('epochs')
+    ax[1].set_ylabel('accuracy')
 
     fig.show()
 

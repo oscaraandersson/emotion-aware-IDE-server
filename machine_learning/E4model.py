@@ -17,7 +17,7 @@ class E4model():
     # [1, 0, 0, 0] : high, negative 
     # [0, 1, 0, 0] : high, positive 
     # [0, 0, 1, 0] : low, negative
-    # [0, 0, 0, 1] : high, positive 
+    # [0, 0, 0, 1] : low, positive 
 
     # example prediction will look like:
     # [0.0025, 0.7988, 0.0924, 0.0667]
@@ -26,4 +26,4 @@ class E4model():
     def predict(self, signal_values):
         instance = self.fe.create_instance(signal_values)
         prediction = self.model(torch.tensor(instance, dtype=torch.float32))
-        return prediction
+        return list(prediction.detach().numpy())
