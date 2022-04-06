@@ -1,4 +1,7 @@
 const net = require('net');
+const prompt = require("prompt");
+const readline = require("readline")
+
 
 
 // import { WebSocket } from "ws";
@@ -53,11 +56,6 @@ class StreamMessage{
     }
 }
 
-const readline = require('readline').createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
 function convert_message(data) {
     console.log("FPOGX: " + byteToFloat(data.slice(0,4)));
     console.log("FPOGY: " + byteToFloat(data.slice(4,8)));
@@ -82,7 +80,6 @@ if (port1) {
     var client = new net.Socket();
     client.connect(port1, '127.0.0.1', function() {
         console.log('Connected');
-        client.write("FRM Tjabba\t\n")
     });
 
     client.on('data', function(data) {
@@ -93,7 +90,24 @@ if (port1) {
             console.log(data.toString())
         }
     });
+    var rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+       });
+       
+       var waitForUserInput = function() {
+         rl.question("Command: ", function(answer) {
+            client.write(answer +"\t\n")
+            if (answer == "END END_SERVER"){
+               rl.close();
+           } else {
+               waitForUserInput();
+           }
+         });
+       }
+       waitForUserInput();
     
+
     // let input_message = "";
     // readline.question("Input: ", input =>{
     //     input_message = input + "\t\n";
