@@ -22,8 +22,22 @@
 			{
 				"command": "emotionawareide.show_message",
 				"title": "Show message"
+			},
+			{
+				"command": "emotionawareide.start_survey",
+				"title": "Start Survey"
 			}
-		]
+		],
+		"configuration": {
+			"title": "EmotionAwareIDE",
+			"properties": {
+				"emotionawareide.port": {
+					"type": "number",
+					"default": 1337,
+					"description": "The port used for receiving data."
+				}
+			}	
+		}
 	},
 	"scripts": {
 		"lint": "eslint .",
