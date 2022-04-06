@@ -82,14 +82,54 @@ function activate(context) {
 		});
 
 		// runs displaymessage with message
-		displayMessage(message);
-		client.write(message);
+		// displayMessage(message);
+		client.write(to_msg(message));
 	}));
 
+	function to_msg(msg) {
+		return msg +"\t\n";
+	}
 
+	// cmd
+
+	async function handle_actions(data_arr)
+	{
+		switch (data_arr[0])
+		{
+			case "TEST":
+				let msg = ""
+				for (let i = 0; i < data_arr.lenght; i++)
+				{
+					msg += data_arr[i] + " "
+				}
+				let message = await vscode.window.showInputBox({
+					placeHolder : "Write response to TEST"
+				});
+				await displayMessage(msg);
+				let complete_msg = "ACT TEST " + message;
+				client.write(to_msg(complete_msg))
+				break;
+			case "SRVY":
+				// Launch survey norification
+				break;
+		}
+	}
+
+	function handle_data(data){
+		let message = data.toString();
+		let cmd_array = message.split(" ");
+		switch (cmd_array[0]){
+			case "ACT":
+				handle_actions(cmd_array.slice(1, cmd_array.length))
+				break;
+			case "ERR":
+				displayMessage(message);
+				break;
+		}
+	}
 
 	// port used for communication
-	const port1 = 1337;
+	const port1 = 1338;
 
 	// initialize client
 	var client = new net.Socket();
@@ -98,23 +138,13 @@ function activate(context) {
 	client.connect(port1, '127.0.0.1', () => {
 		console.log('Connected');
 		if (client) {
-			client.write('Hello, server! Love, Client.');
+			client.write(to_msg("AACT TEST"));
 		}
 	});
 
 	// on data received run function
 	client.on('data', (data) => {
-
-		// if nulls disconnect
-		if (data == "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"){
-			console.log("Disconnecting client.")
-			client.destroy();
-
-		// write message
-		} else {
-			let message = convert_message(data)
-			displayMessage(message);
-		}
+			handle_data(data);
 	});
 }
 
