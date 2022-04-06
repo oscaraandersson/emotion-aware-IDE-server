@@ -13,3 +13,7 @@ To supply the command that the is run we must specify in the **extenstion.js** f
 ```js
 context.subscriptions.push(vscode.commands.registerCommand("same name supplied as the command in the json file goes here", "The function to goes here"));
 ```
+
+## Working with THE SERVER! :)!
+
+Turn on server first (before starting the extension debug) and when exiting press enter, do not use ctrl + z this will not exit the program correctly and the port will remain active.

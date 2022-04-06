@@ -142,4 +142,5 @@ class TestAction(Action):
         self.NAME = "TEST"
     
     async def _execute(self):
+        print("Sending")
         print(await self._msg_client_wait("Tjabba"))

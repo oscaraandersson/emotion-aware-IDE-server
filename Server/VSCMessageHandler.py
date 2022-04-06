@@ -32,12 +32,17 @@ class MsgHandler:
         self.running = True
         server = await asyncio.start_server(self._handle_client, self.host, self.port)
         async with server:
-            await server.serve_forever()
+            self._server_task = asyncio.create_task(server.serve_forever())
+            await self._server_task
     
     async def _handle_client(self, reader, writer):
         task_r = asyncio.create_task(self._handle_input(reader))
         self._writer = writer
-        await task_r
+        try:
+            await task_r
+        except asyncio.exceptions.IncompleteReadError:
+            self.exit()
+
 
     
     async def _handle_input(self, reader):

@@ -166,6 +166,7 @@ class VSCServer:
             cmd = msg[:seperator]
         # Data sent to the function mapped to the command
         data = msg[seperator+1:]
+        print(cmd)
         if cmd in self.cmd_dict:
             # Call function with data
             await self.cmd_dict[cmd](data)
