@@ -51,17 +51,20 @@ class E4:
         return
 
     # returns the last n seconds of data
-    def get_data(n):
+    def get_data(self, n):
         dataObject = {
                 "EDA": [],
                 "BVP": [],
                 "ST": [],
-                "timestamp"
+                "HR": [],
+                "timestamp": 0
                 }
         dataObject["EDA"] = self.dataObject["EDA"][-32*n:]
         dataObject["BVP"] = self.dataObject["BVP"][-64*n:]
         dataObject["ST"] = self.dataObject["ST"][-8*n:]
         dataObject["timestamp"] = self.dataObject["timestamp"]
+        dataObject["HR"] = [item * 2 / 5 for item in
+                self.dataObject["BVP"][-1*n:]]
         return dataObject
 
 
@@ -141,4 +144,3 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
     #asyncio.run(scanner())
-
