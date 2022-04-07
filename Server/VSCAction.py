@@ -1,6 +1,10 @@
 import asyncio
 import json
+import numpy as np
+import pandas as pd
 from VSCServerMessages import *
+import time
+import os
 
 class Action:
     def __init__(self, frequency, serv):
@@ -63,7 +67,6 @@ class Action:
             if self.running:
                 # Do work
                 await self._execute()
-
     # -------------------------------------
     # -------- Messaging client -----------
     # -------------------------------------
@@ -112,6 +115,7 @@ class Action:
         except Exception:
             changed = False
         return changed
+
     async def _execute(self):
         pass
 
@@ -127,14 +131,80 @@ class SurveyAction(Action):
     
     async def _execute(self):
         # Request mood from extension, wait for response
+        FILE_NAME = "training_data.json"
         message = await self._msg_client_wait("MOOD")
         # Get data to pair mood with
         latest_data = await self.serv.server_E4.get_data(self.DATA_RANGE)
         # Add mood to data
         latest_data["value"] = int(message)
         # Write to disk for later training of AI
-        with open("Training_data.json","a") as opfile:
-            json.dump(latest_data, opfile, indent=4)
+        if not os.path.exists(FILE_NAME):
+            temp_file = open(FILE_NAME, "w")
+            temp_file.close()
+        
+        with open(FILE_NAME,"r+") as opfile:
+            try:
+                existing_data = json.load(opfile)
+            except json.decoder.JSONDecodeError:
+                existing_data = []
+            opfile.seek(0,0)
+            existing_data.append(latest_data)
+            json.dump(existing_data, opfile, indent=4)
+
+class EstimatedEmotion(Action):
+    def __init__(self, frequency, serv):
+        super().__init__(frequency, serv)
+        self.NAME = "ESTM"
+        self.DEVICES = ["E4"]
+        self._signal_index = 0
+    
+    def _convert(self, latest_data):
+        ret_dict = {}
+        for key, val in latest_data.items():
+            ret_dict[key] = np.array(val)
+        return ret_dict
+    
+    def _save_prediction(self, index):
+        # Check if csv file already exists
+        FILE_NAME = "../../Dashboard/emotions.csv"
+        df = None
+
+        if os.path.exists(FILE_NAME):
+            df = pd.read_csv(FILE_NAME)
+        else:
+            df = pd.DataFrame({
+                "timestamp" : [],
+                "emotions" : []
+            })
+        timestamp = int(time.time())
+        df1 = pd.DataFrame({
+            "timestamp" : [timestamp],
+            "emotions" : [index]
+        })
+        df = pd.concat([df, df1], ignore_index=True)
+        df.to_csv(FILE_NAME, index=False)
+
+    async def _execute(self):
+        latest_data = await self.serv._E4_handler.get_data(self.DATA_RANGE)
+        # Temporary until we get actual streaming from E4
+        with open("SignalOut.json", "r") as opfile:
+            latest_data = json.load(opfile)
+
+        # Convert to correct format before using with E4Model
+        signal_values = self._convert(latest_data[self._signal_index])
+        # Temporary until we get actual streaming from E4
+        self._signal_index = (self._signal_index + 1) % 6
+        # Make prediction
+        pred_lst = self.serv._E4_model.predict(signal_values)
+        # Get the prediction with highest certainty
+        max_pred = max(pred_lst)
+        # Get index of said prediction
+        pred_index = pred_lst.index(max_pred) + 1
+        # Save prediction to disk, for use in Dashboard
+        self._save_prediction(pred_index)
+        # Send prediction to client
+        msg = f"{str(pred_index)} {str(round(max_pred*100, 1))}"
+        await self._msg_client(msg)
 
 class TestAction(Action):
     def __init__(self, frequency, serv):
