@@ -20,13 +20,15 @@ CONTROL_CMD = 36
 
 NOTIFY_DATA = [19, 23, 31]
 
+SECONDS_TO_SAVE = 30
+
 class E4:
 
     def __init__(self):
         self.dataObject = {
-                "EDA": [],
-                "BVP": [],
-                "ST": [],
+                "EDA": [0]*SECONDS_TO_SAVE*32,
+                "BVP": [0]*SECONDS_TO_SAVE*64,
+                "ST": [0]*SECONDS_TO_SAVE*8,
                 "timestamp": 0
                 }
 
@@ -48,21 +50,49 @@ class E4:
     def disconnected(self, client):
         return
 
+    # returns the last n seconds of data
+    def get_data(n):
+        dataObject = {
+                "EDA": [],
+                "BVP": [],
+                "ST": [],
+                "timestamp"
+                }
+        dataObject["EDA"] = self.dataObject["EDA"][-32*n:]
+        dataObject["BVP"] = self.dataObject["BVP"][-64*n:]
+        dataObject["ST"] = self.dataObject["ST"][-8*n:]
+        dataObject["timestamp"] = self.dataObject["timestamp"]
+        return dataObject
+
+
     # handle BVP data
     def bvp_handler(self, data):
-        print(data)
+        result = []
+        for i in range(0, 18, 3):
+            result.append(data[i])
+        for i in range(len(result)):
+            self.dataObject["BVP"].append(result[i])
+            self.dataObject["BVP"].pop(0)
 
     # handle EDA data
     def eda_handler(self, data):
-        print(data)
+        result = []
+        for i in range(0, 18, 3):
+            result.append(data[i])
+        for i in range(len(result)):
+            self.dataObject["EDA"].append(result[i])
+            self.dataObject["EDA"].pop(0)
 
     # handle ST data
     def st_handler(self, data):
         result = []
         for i in range(0, 18, 2):
             result.append(data[i]*0.02+data[i+1]*5.12-273.15)
-        print(result)
+        for i in range(len(result)):
+            self.dataObject["ST"].append(result[i])
+            self.dataObject["ST"].pop(0)
 
+    # function called when receiving data from e4
     def notify_func(self, sender, data):
         # if sender == 19 (BVP)
         if sender == 19:
@@ -87,7 +117,8 @@ class E4:
                 self.client.set_disconnected_callback(self.disconnected)
                 tasks = []
                 for ntify in NOTIFY_DATA:
-                    tasks.append(self.client.start_notify(ntify, self.notify_func))
+                    tasks.append(self.client.start_notify(ntify,
+                        self.notify_func))
 
                 tasks.append(self.client.write_gatt_char(36, bytearray(
                     [1]+list(round(time.time()).to_bytes(8, 'little'))[:-4])))
