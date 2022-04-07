@@ -157,6 +157,7 @@ class EstimatedEmotion(Action):
         self.NAME = "ESTM"
         self.DEVICES = ["E4"]
         self._signal_index = 0
+        self.DATA_RANGE = 10
     
     def _convert(self, latest_data):
         ret_dict = {}
@@ -185,16 +186,12 @@ class EstimatedEmotion(Action):
         df.to_csv(FILE_NAME, index=False)
 
     async def _execute(self):
-        latest_data = await self.serv._E4_handler.get_data(self.DATA_RANGE)
-        # Temporary until we get actual streaming from E4
-        with open("SignalOut.json", "r") as opfile:
-            latest_data = json.load(opfile)
+        latest_data = self.serv._E4_handler.get_data(self.DATA_RANGE)
 
         # Convert to correct format before using with E4Model
-        signal_values = self._convert(latest_data[self._signal_index])
-        # Temporary until we get actual streaming from E4
-        self._signal_index = (self._signal_index + 1) % 6
-        # Make prediction
+        print(latest_data)
+        signal_values = self._convert(latest_data)
+        # Do stuff
         pred_lst = self.serv._E4_model.predict(signal_values)
         # Get the prediction with highest certainty
         max_pred = max(pred_lst)

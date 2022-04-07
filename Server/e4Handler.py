@@ -26,9 +26,9 @@ class E4:
 
     def __init__(self, onfunc, offunc):
         self.dataObject = {
-                "EDA": [0]*SECONDS_TO_SAVE*32,
+                "EDA": [0]*SECONDS_TO_SAVE*4,
                 "BVP": [0]*SECONDS_TO_SAVE*64,
-                "ST": [0]*SECONDS_TO_SAVE*8,
+                "ST": [0]*SECONDS_TO_SAVE*4,
                 "timestamp": 0
                 }
         self._onfunc = onfunc
@@ -57,13 +57,13 @@ class E4:
         dataObject = {
                 "EDA": [],
                 "BVP": [],
-                "ST": [],
+                "TEMP": [],
                 "HR": [],
                 "timestamp": 0
                 }
-        dataObject["EDA"] = self.dataObject["EDA"][-32*n:]
+        dataObject["EDA"] = self.dataObject["EDA"][-4*n:]
         dataObject["BVP"] = self.dataObject["BVP"][-64*n:]
-        dataObject["ST"] = self.dataObject["ST"][-8*n:]
+        dataObject["TEMP"] = self.dataObject["ST"][-4*n:]
         dataObject["timestamp"] = self.dataObject["timestamp"]
         dataObject["HR"] = [item * 2 / 5 for item in
                 self.dataObject["BVP"][-1*n:]]

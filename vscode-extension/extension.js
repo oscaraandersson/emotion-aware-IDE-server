@@ -92,6 +92,7 @@ function activate(context) {
 				let pred_index = parseInt(data_arr[1]);
 				let pred_certainty = data_arr[2];
 				complete_msg = `I believe you are: ${emotion_to_emoji(pred_index)}, with ${pred_certainty}% certainty.`;
+				update_statusbar_label(emotion_to_emoji(pred_index));
 				displayMessage(complete_msg);
 				break;
 		}
@@ -103,6 +104,9 @@ function activate(context) {
 		switch (cmd_array[0]){
 			case "ACT":
 				handle_actions(cmd_array.slice(1, cmd_array.length));
+				break;
+			case "CE4":
+				displayMessage(message);
 				break;
 			case "ERR":
 				displayMessage(message);
