@@ -109,6 +109,7 @@ class E4:
         # fallback
         else:
             print(f"{sender}: {list(data)}")
+        self.dataObject["timestamp"] = time.time()
 
     async def connect(self, deviceId):
         scanner = BleakScanner()
