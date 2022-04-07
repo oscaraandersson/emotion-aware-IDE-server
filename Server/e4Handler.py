@@ -24,13 +24,15 @@ SECONDS_TO_SAVE = 30
 
 class E4:
 
-    def __init__(self):
+    def __init__(self, onfunc, offunc):
         self.dataObject = {
                 "EDA": [0]*SECONDS_TO_SAVE*32,
                 "BVP": [0]*SECONDS_TO_SAVE*64,
                 "ST": [0]*SECONDS_TO_SAVE*8,
                 "timestamp": 0
                 }
+        self._onfunc = onfunc
+        self._offunc = offunc
 
     async def scan_for_e4(self):
         scanner = BleakScanner()
@@ -48,7 +50,7 @@ class E4:
         return wristband
 
     def disconnected(self, client):
-        return
+        self._offunc()
 
     # returns the last n seconds of data
     def get_data(self, n):
@@ -129,10 +131,11 @@ class E4:
                 await asyncio.gather(*tasks)
                 await scanner.stop()
         except Exception as e:
-            pass
-
+            raise Exception("Could not connect to E4 device.")
+        await self._onfunc()
         while True:
             if not self.client.is_connected:
+                self._offunc()
                 break
             await asyncio.sleep(5)
 

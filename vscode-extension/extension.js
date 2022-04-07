@@ -3,6 +3,7 @@
 //const { once } = require('events');
 const vscode = require('vscode');
 const net = require('net');
+const { write } = require('fs');
 
 
 let statusbar_item;
@@ -43,8 +44,30 @@ function activate(context) {
 
 	// cmd
 
+	function emotion_to_emoji(index)
+	{
+		let emoji = "";
+		switch(index)
+		{
+			case 1:
+				emoji = "😰";
+				break;
+			case 2:
+				emoji = "😃";
+				break;
+			case 3:
+				emoji = "😞";
+				break;
+			case 4:
+				emoji = "😐";
+				break;
+		}
+		return emoji;
+	}
+
 	async function handle_actions(data_arr)
 	{
+		let complete_msg = "";
 		switch (data_arr[0])
 		{
 			case "TEST":
@@ -57,11 +80,19 @@ function activate(context) {
 					placeHolder : "Write response to TEST"
 				});
 				await displayMessage(msg);
-				let complete_msg = "ACT TEST " + message;
-				client.write(to_msg(complete_msg))
+				complete_msg = "ACT TEST " + message;
+				client.write(to_msg(complete_msg));
 				break;
 			case "SRVY":
-				// Launch survey norification
+				let result = await show_survey();
+				complete_msg = "ACT SRVY " + result;
+				client.write(to_msg(complete_msg));
+				break;
+			case "ESTM":
+				let pred_index = parseInt(data_arr[1]);
+				let pred_certainty = data_arr[2];
+				complete_msg = `I believe you are: ${emotion_to_emoji(pred_index)}, with ${pred_certainty}% certainty.`;
+				displayMessage(complete_msg);
 				break;
 		}
 	}
@@ -71,7 +102,7 @@ function activate(context) {
 		let cmd_array = message.split(" ");
 		switch (cmd_array[0]){
 			case "ACT":
-				handle_actions(cmd_array.slice(1, cmd_array.length))
+				handle_actions(cmd_array.slice(1, cmd_array.length));
 				break;
 			case "ERR":
 				displayMessage(message);
@@ -97,9 +128,6 @@ function activate(context) {
 	// connect client
 	client.connect(port1, '127.0.0.1', () => {
 		console.log('Connected');
-		if (client) {
-			client.write(to_msg("AACT TEST"));
-		}
 	});
 
 	// on data received run function
@@ -128,6 +156,26 @@ function show_web_view() {
 
 	// gets the html to display
 	panel.webview.html = getWebviewContent();
+}
+
+async function show_survey() {
+	res_mood = await vscode.window.showInformationMessage("How are you feeling?", "😰", "😞", "😐", "😃");
+	let result = 0;
+	switch (res_mood){
+		case "😰":
+			result = 1;
+			break;
+		case "😃":
+			result = 2;
+			break;
+		case "😞":
+			result = 3;
+			break;
+		case "😐":
+			result = 4;
+			break;
+	}
+	return result;
 }
 
 

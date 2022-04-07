@@ -1,24 +1,19 @@
 from Error_handler import ErrorHandler
 from VSCMessageHandler import MsgHandler
 from VSCServerMessages import *
+from e4Handler import E4
 from ActionFactory import action_factory
 import asyncio
+import sys
+import json
+import numpy as np
 
-class E4Server:
-    async def scan(self):
-        return []
-    async def connect(self, address):
-        return False
-    async def get_data(self, sec):
-        return {"Tjabba":"Tjena"}
-    async def disconnect(self):
-        pass
+sys.path.append("../machine_learning")
+sys.path.append("../")
 
-class E4Model:
-    def __init__(self, basline):
-        pass
-    def predict(self):
-        pass
+import machine_learning
+
+
 
 
 class GazePoint:
@@ -30,13 +25,20 @@ class GazePoint:
         pass
 
 BASELINE_TIME = 30 # Last 30 seconds
+BASELINE_NAME = "lokal_baseline.json"
 
+def blahblah():
+    with open("Baselineout.json","r") as opfile:
+        dic = {}
+        for key, val in json.load(opfile).items():
+            dic[key] = np.array(val)
+        return machine_learning.E4model(dic)
 
 class VSCServer:
-    def __init__(self, port=1338):
+    def __init__(self, port=1339):
         self.errh = ErrorHandler()
-        self.server_E4 = E4Server()
-        self._E4_model = None
+        self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection)
+        self._E4_model = blahblah()
         self.eye_tracker = GazePoint()
         self._baseline = None
         self.settings = {
@@ -166,7 +168,6 @@ class VSCServer:
             cmd = msg[:seperator]
         # Data sent to the function mapped to the command
         data = msg[seperator+1:]
-        print(cmd)
         if cmd in self.cmd_dict:
             # Call function with data
             await self.cmd_dict[cmd](data)
@@ -211,14 +212,25 @@ class VSCServer:
         print(data)
     
     async def _save_baseline(self, baseline):
-        pass
+        with open("lokal_baseline.json","w") as opfile:
+            json.dump(baseline, opfile, indent=4)
 
     async def _to_baseline(self, stream_data):
-        return stream_data
-    
+        ret_dict = {}
+        for key, val in stream_data.items():
+            val1 = []
+            if key != "timestamp":
+                val1 = np.array(val)
+            else:
+                val1 = val
+            ret_dict[key] = val1
+        return ret_dict
+
     async def _read_baseline(self):
         with open("VSCBaseline.json","r") as opfile:
-            pass
+            baseline = json.load(opfile)
+        return self._to_baseline(baseline)
+
 
     async def _start_baseline(self, data):
         # Record baseline, subscribe to feed
@@ -234,7 +246,7 @@ class VSCServer:
                 return None
             baseline = await self._read_baseline()
             # Create E4 prediction model
-            self._E4_model = E4Model(baseline)
+            self._E4_model = machine_learning.E4Model(baseline)
             # Let extension know baseline is loaded
             await self.send(START_BASELINE+" "+SUCCESS_STR+response)
         else:
@@ -244,13 +256,13 @@ class VSCServer:
                 # Wait for the whole baseline to be recorded
                 await asyncio.sleep(BASELINE_TIME+3)
                 # Get data to be converted to baseline
-                stream_data = self.server_E4.get_data(BASELINE_TIME)
+                stream_data = self._E4_handler.get_data(BASELINE_TIME)
                 # Create baseline
                 self._baseline = self._to_baseline(stream_data)
                 # Save baseline lokaly, loading baseline is now possible
-                self._save_baseline(self._baseline)
+                self._save_baseline(stream_data)
                 # Create E4 prediction model
-                self._E4_model = E4Model(self._baseline)
+                self._E4_model = machine_learning.E4Model(self._baseline)
                 # Let extension know the new baseline is set
                 await self.send(START_BASELINE +" "+ SUCCESS_STR+response)
             else:
@@ -279,16 +291,10 @@ class VSCServer:
                 await self.actions[a]["obj"].start()
 
     async def _connect_E4(self, data):
-        connected = await E4Server.connect(data)
-        if connected:
-            self.settings["devices"]["E4"] = True
-            await self._activate_active_actions()
-            await self.send(CONNECT_E4 +" "+ SUCCESS_STR)
-        else:
-            await self.send(CONNECT_E4 +" "+ FAIL_STR)
+        await self._E4_handler.connect(data)
 
     async def _disconnect_E4(self, data):
-        self.server_E4.disconnect()
+        self._E4_handler.disconnect()
 
 
     async def _start_eyetracker(self, data):
@@ -304,7 +310,7 @@ class VSCServer:
         await self.send(RECALIBRATE_EYE +" "+ SUCCESS_STR)
 
     async def _scan_E4(self, data):
-        address_lst = self.server_E4.scan()
+        address_lst = await self._E4_handler.scan_for_e4()
         if address_lst:
             msg = SCAN_E4 +" "+ SUCCESS_STR
             for address in address_lst:
@@ -324,6 +330,11 @@ class VSCServer:
                 if f in self.act_waiting:
                     del self.act_waiting[f]
         await self.send(E4_LOST_CONNECTION + " Lost connection to device.")
+
+    async def _connected_confirmation(self):
+        self.settings["devices"]["E4"] = True
+        await self._activate_active_actions()
+        await self.send(f"{CONNECT_E4} {SUCCESS_STR}")
 
 async def main():
     server = VSCServer()
