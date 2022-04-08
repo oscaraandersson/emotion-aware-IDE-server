@@ -229,6 +229,8 @@ class FeatureExtractor():
         l = len(peaks_normalized)
         for i in range(0, l):
             s += BVP_normalized[peaks_normalized[i]]
+        if (l == 0):
+            return 0
         return s/l
 
     def get_min_BVPpeaks_ampl(self):
@@ -236,6 +238,8 @@ class FeatureExtractor():
         l = len(self.peaks_normalized)
         for i in range(0, l):
             amplitudes.append(self.BVP_normalized[self.peaks_normalized[i]])
+        if (l == 0):
+            return 0
         return min(amplitudes)
 
     def get_max_BVPpeaks_ampl(self):
@@ -243,6 +247,8 @@ class FeatureExtractor():
         l = len(self.peaks_normalized)
         for i in range(0, l):
             amplitudes.append(self.BVP_normalized[self.peaks_normalized[i]])
+        if (l == 0):
+            return 0
         return max(amplitudes)
 
     def get_sum_peak_ampl(self):

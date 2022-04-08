@@ -6,6 +6,29 @@ from VSCServerMessages import *
 import time
 import os
 
+feature_order = {
+        'mean_SCL': [],
+        'AUC_Phasic' : [],
+        'min_peak_amplitude' : [],
+        'max_peak_amplitude' : [],
+        'mean_phasic_peak' : [],
+        'sum_phasic_peak_amplitude' : [],
+        'mean_temp' : [],
+        'mean_temp_difference' : [],
+        'max_temp' : [],
+        'max_temp_difference' : [],
+        'min_temp' : [],
+        'min_temp_difference' : [],
+        'difference_BVPpeaks_ampl' : [],
+        'mean_BVPpeaks_ampl' : [],
+        'min_BVPpeaks_ampl' : [],
+        'max_BVPpeaks_ampl' : [],
+        'sum_peak_ampl' : [],
+        'HR_mean_difference' : [],
+        'HR_variance_difference' : [],
+        'label' : []
+}
+
 class Action:
     def __init__(self, frequency, serv):
         # Needs to be set when creating a new action
@@ -128,7 +151,47 @@ class SurveyAction(Action):
         # -----------------
 
         self.DATA_RANGE = 10
-    
+
+    def _convert(self, latest_data):
+        ret_dict = {}
+        for key, val in latest_data.items():
+            ret_dict[key] = np.array(val)
+        return ret_dict
+
+    def _save_instance(self, instance, label):
+        # Check if csv file already exists
+        FILE_NAME = "dataset.csv"
+        df = None
+
+        if os.path.exists(FILE_NAME):
+            df = pd.read_csv(FILE_NAME)
+        else:
+            df = pd.DataFrame(feature_order)
+        df1 = pd.DataFrame({
+            'mean_SCL': [instance[0]],
+            'AUC_Phasic' : [instance[1]],
+            'min_peak_amplitude' : [instance[2]],
+            'max_peak_amplitude' : [instance[3]],
+            'mean_phasic_peak' : [instance[4]],
+            'sum_phasic_peak_amplitude' : [instance[5]],
+            'mean_temp' : [instance[6]],
+            'mean_temp_difference' : [instance[7]],
+            'max_temp' : [instance[8]],
+            'max_temp_difference' : [instance[9]],
+            'min_temp' : [instance[10]],
+            'min_temp_difference' : [instance[11]],
+            'difference_BVPpeaks_ampl' : [instance[12]],
+            'mean_BVPpeaks_ampl' : [instance[13]],
+            'min_BVPpeaks_ampl' : [instance[14]],
+            'max_BVPpeaks_ampl' : [instance[15]],
+            'sum_peak_ampl' : [instance[16]],
+            'HR_mean_difference' : [instance[17]],
+            'HR_variance_difference' : [instance[18]],
+            'label' : [label]
+        })
+        df = pd.concat([df, df1], ignore_index=True)
+        df.to_csv(FILE_NAME, index=False)
+
     async def _execute(self):
         # Request mood from extension, wait for response
         FILE_NAME = "training_data.json"
@@ -136,20 +199,11 @@ class SurveyAction(Action):
         # Get data to pair mood with
         latest_data = self.serv._E4_handler.get_data(self.DATA_RANGE)
         # Add mood to data
-        latest_data["value"] = int(message)
-        # Write to disk for later training of AI
-        if not os.path.exists(FILE_NAME):
-            temp_file = open(FILE_NAME, "w")
-            temp_file.close()
-        
-        with open(FILE_NAME,"r+") as opfile:
-            try:
-                existing_data = json.load(opfile)
-            except json.decoder.JSONDecodeError:
-                existing_data = []
-            opfile.seek(0,0)
-            existing_data.append(latest_data)
-            json.dump(existing_data, opfile, indent=4)
+        del latest_data["timestamp"]
+        instance = self.serv._E4_model.get_instance(self._convert(latest_data))
+
+        self._save_instance(instance, int(message))
+
 
 class EstimatedEmotion(Action):
     def __init__(self, frequency, serv):
@@ -174,12 +228,12 @@ class EstimatedEmotion(Action):
             df = pd.read_csv(FILE_NAME)
         else:
             df = pd.DataFrame({
-                "timestamp" : [],
+                "timestamps" : [],
                 "emotions" : []
             })
         timestamp = int(time.time())
         df1 = pd.DataFrame({
-            "timestamp" : [timestamp],
+            "timestamps" : [timestamp],
             "emotions" : [index]
         })
         df = pd.concat([df, df1], ignore_index=True)
