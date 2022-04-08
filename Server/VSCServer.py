@@ -28,7 +28,7 @@ BASELINE_TIME = 30 # Last 30 seconds
 BASELINE_NAME = "lokal_baseline.json"
 
 def blahblah():
-    with open("Baselineout.json","r") as opfile:
+    with open(BASELINE_NAME,"r") as opfile:
         dic = {}
         for key, val in json.load(opfile).items():
             dic[key] = np.array(val)
@@ -38,7 +38,7 @@ class VSCServer:
     def __init__(self, port=1339):
         self.errh = ErrorHandler()
         self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection)
-        self._E4_model = blahblah()
+        self._E4_model = None
         self.eye_tracker = GazePoint()
         self._baseline = None
         self.settings = {
