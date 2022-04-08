@@ -91,7 +91,7 @@ class E4:
     # handle ST data
     def st_handler(self, data):
         result = []
-        for i in range(0, 18, 2):
+        for i in range(0, 16, 2):
             result.append(data[i]*0.02+data[i+1]*5.12-273.15)
         for i in range(len(result)):
             self.dataObject["ST"].append(result[i])
