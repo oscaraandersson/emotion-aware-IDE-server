@@ -1,0 +1,7 @@
+venv/
+.DS_Store
+.ipynb_checkpoints/
+data/.DS_Store
+data/eye_tracker/.DS_Store
+eye_tracker.ipynb
+*.pyc
