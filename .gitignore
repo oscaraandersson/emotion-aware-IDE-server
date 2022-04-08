@@ -4,3 +4,7 @@ venv
 *.ipynb_checkpoints/
 *__pycache__/
 main.ipynb
+emotions.csv
+dataset.csv
+lokal_baseline.json
+training_data.json
