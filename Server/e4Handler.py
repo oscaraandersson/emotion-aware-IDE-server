@@ -135,7 +135,7 @@ class E4:
         await self._onfunc()
         while True:
             if not self.client.is_connected:
-                self._offunc()
+                await self._offunc()
                 break
             await asyncio.sleep(5)
 

@@ -215,7 +215,7 @@ class VSCServer:
         with open("lokal_baseline.json","w") as opfile:
             json.dump(baseline, opfile, indent=4)
 
-    async def _to_baseline(self, stream_data):
+    def _to_baseline(self, stream_data):
         ret_dict = {}
         for key, val in stream_data.items():
             val1 = []
@@ -246,7 +246,7 @@ class VSCServer:
                 return None
             baseline = await self._read_baseline()
             # Create E4 prediction model
-            self._E4_model = machine_learning.E4Model(baseline)
+            self._E4_model = machine_learning.E4model(baseline)
             # Let extension know baseline is loaded
             await self.send(START_BASELINE+" "+SUCCESS_STR+response)
         else:
@@ -260,9 +260,9 @@ class VSCServer:
                 # Create baseline
                 self._baseline = self._to_baseline(stream_data)
                 # Save baseline lokaly, loading baseline is now possible
-                self._save_baseline(stream_data)
+                await self._save_baseline(stream_data)
                 # Create E4 prediction model
-                self._E4_model = machine_learning.E4Model(self._baseline)
+                self._E4_model = machine_learning.E4model(self._baseline)
                 # Let extension know the new baseline is set
                 await self.send(START_BASELINE +" "+ SUCCESS_STR+response)
             else:

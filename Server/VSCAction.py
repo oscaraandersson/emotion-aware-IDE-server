@@ -134,7 +134,7 @@ class SurveyAction(Action):
         FILE_NAME = "training_data.json"
         message = await self._msg_client_wait("MOOD")
         # Get data to pair mood with
-        latest_data = await self.serv.server_E4.get_data(self.DATA_RANGE)
+        latest_data = self.serv._E4_handler.get_data(self.DATA_RANGE)
         # Add mood to data
         latest_data["value"] = int(message)
         # Write to disk for later training of AI
@@ -189,7 +189,6 @@ class EstimatedEmotion(Action):
         latest_data = self.serv._E4_handler.get_data(self.DATA_RANGE)
 
         # Convert to correct format before using with E4Model
-        print(latest_data)
         signal_values = self._convert(latest_data)
         # Do stuff
         pred_lst = self.serv._E4_model.predict(signal_values)

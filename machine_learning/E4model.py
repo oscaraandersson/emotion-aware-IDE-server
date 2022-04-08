@@ -23,7 +23,11 @@ class E4model():
     # [0.0025, 0.7988, 0.0924, 0.0667]
     # where numbers represent certainty -> first quadrant of the circle with 80% certainty
 
+    def get_instance(self, signal_values):
+        return self.fe.create_instance(signal_values)
+
     def predict(self, signal_values):
-        instance = self.fe.create_instance(signal_values)
+        instance = self.get_instance(signal_values)
         prediction = self.model(torch.tensor(instance, dtype=torch.float32))
         return list(prediction.detach().numpy())
+
