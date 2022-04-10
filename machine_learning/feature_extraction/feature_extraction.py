@@ -204,17 +204,20 @@ class FeatureExtractor():
         self.baseline_preprocessed = lfilter(b, a, self.baseline)
 
         if (self.BVP_preprocessed.shape != 0):
-            self.peaks_signal = find_peaks(self.BVP_preprocessed)
+            try:
+                self.peaks_signal = find_peaks(self.BVP_preprocessed)
+            except:
+                self.peaks_signal = [0]
         else:
-            self.peaks_signal == 0
+            self.peaks_signal = [0]
         if (self.baseline_preprocessed.shape != 0):
             self.peaks_baseline = find_peaks(self.baseline_preprocessed)
         else:
-            self.peaks_baseline = 0
+            self.peaks_baseline = [0]
         if (self.BVP_normalized.shape != 0):
             self.peaks_normalized = find_peaks(self.BVP_normalized)
         else:
-            self.peaks_normalized = 0
+            self.peaks_normalized = [0]
 
         features = {
                 'difference_BVPpeaks_ampl': self.get_difference_BVPpeaks_ampl(),
