@@ -1,3 +1,5 @@
+from asyncio import base_events
+from http import client
 from Error_handler import ErrorHandler
 from VSCMessageHandler import MsgHandler
 from VSCServerMessages import *
@@ -6,6 +8,7 @@ from ActionFactory import action_factory
 import asyncio
 import sys
 import json
+import os
 import numpy as np
 
 sys.path.append("../machine_learning")
@@ -27,18 +30,12 @@ class GazePoint:
 BASELINE_TIME = 30 # Last 30 seconds
 BASELINE_NAME = "lokal_baseline.json"
 
-def blahblah():
-    with open(BASELINE_NAME,"r") as opfile:
-        dic = {}
-        for key, val in json.load(opfile).items():
-            dic[key] = np.array(val)
-        return machine_learning.E4model(dic)
 
 class VSCServer:
     def __init__(self, port=1339):
         self.errh = ErrorHandler()
         self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection)
-        self._E4_model = blahblah()
+        self._E4_model = None
         self.eye_tracker = GazePoint()
         self._baseline = None
         self.settings = {
@@ -107,10 +104,11 @@ class VSCServer:
                     cannot_activate.append(a)
         if cannot_activate:
             # Return all actions which could not be connected
-            await self.send(ACTIVATE_ACTION+" ERR "+" ".join(cannot_activate))
+            not_activated = " ".join(cannot_activate)
+            await self.send(f"{ACTIVATE_ACTION} {FAIL_STR} {not_activated}")
         else:
             # All actions are active 
-            await self.send(ACTIVATE_ACTION +" "+SUCCESS_STR)
+            await self.send(f"{ACTIVATE_ACTION} {SUCCESS_STR}")
 
     async def _deactivate_action(self, msg):
         action_lst = msg.split(' ')
@@ -126,13 +124,14 @@ class VSCServer:
                     client_actions.append(a)
                 if a in self.act_waiting:
                     del self.act_waiting[a]
-        await self.send(DEACTIVATE_ACTION +" "+ SUCCESS_STR+" "+" ".join(client_actions))
+        deactivated = " ".join(client_actions)
+        await self.send(f"{DEACTIVATE_ACTION} {SUCCESS_STR} {deactivated}")
     
     async def _edit_action(self, data):
         cmd_parts = data.split(" ")
         a = cmd_parts[0]
         if not a in self.actions:
-            self._send_error(self.errh.ERR_NOT_AN_ACTION, a)
+            self._send_error(ERR_NOT_AN_ACTION, a)
             return
         cmd_parts = cmd_parts[1:]
         not_changed = []
@@ -148,11 +147,12 @@ class VSCServer:
         response = ""
         if not_a_setting:
             response = " ".join(not_a_setting)
-            await self._send_error(self.errh.ERR_NOT_A_SETTING,response)
+            await self._send_error(ERR_NOT_A_SETTING,response)
         if not_changed:
-            await self.send(EDIT_ACTION+" "+FAIL_STR+" "+" ".join(not_changed))
+            not_chngd = " ".join(not_changed)
+            await self.send(f"{EDIT_ACTION} {FAIL_STR} {not_chngd}")
         if not (not_a_setting and not_changed):
-            await self.send(EDIT_ACTION+" "+SUCCESS_STR)
+            await self.send(f"{EDIT_ACTION} {SUCCESS_STR}")
 
         
 
@@ -173,23 +173,21 @@ class VSCServer:
             await self.cmd_dict[cmd](data)
         else:
             # Throw error, non existant command
-            await self._send_error(self.errh.ERR_INVALID_CMD)
+            await self._send_error(ERR_INVALID_CMD)
     
     async def _send_error(self, err, msg=""):
         # Send error to client
-        await self.msg_handler.send(self.errh[err]+" "+msg)
+        await self.msg_handler.send(f"{self.errh[err]} {msg}")
     
     async def action_send(self, act, data):
         # Send data to extension from action, one way communication
-        msg = ACTION_STR +" "+ act +" "+ data
+        msg = f"{ACTION_STR} {act} {data}"
         await self.send(msg)
 
     async def action_send_wait(self, act, data):
-        # Send data to extension and wait for response
-        msg = ACTION_STR +" "+ act +" "+ data
+        msg = f"{ACTION_STR} {act} {data}"
         # Put the action in waiting list
-        self.act_waiting[act] = self.actions[act]["obj"]
-        # Send message to client
+        self.act_waiting[act] = self.actions[act]["obj"].client_response
         await self.send(msg)
 
     async def _action_response(self, msg):
@@ -199,7 +197,7 @@ class VSCServer:
         data = msg[seperator+1:]
         if name in self.act_waiting:
             # Send response to client
-            self.act_waiting[name].client_response(data)
+            self.act_waiting[name](data)
             # Remove action from waiting list
             del self.act_waiting[name]
 
@@ -212,64 +210,56 @@ class VSCServer:
         print(data)
     
     async def _save_baseline(self, baseline):
-        with open("lokal_baseline.json","w") as opfile:
+        with open(BASELINE_NAME,"w") as opfile:
             json.dump(baseline, opfile, indent=4)
 
     def _to_baseline(self, stream_data):
         ret_dict = {}
         for key, val in stream_data.items():
-            val1 = []
             if key != "timestamp":
-                val1 = np.array(val)
+                ret_dict[key] = np.array(val)
             else:
-                val1 = val
-            ret_dict[key] = val1
+                ret_dict[key] = val
         return ret_dict
 
-    async def _read_baseline(self):
-        with open("VSCBaseline.json","r") as opfile:
-            baseline = json.load(opfile)
-        return self._to_baseline(baseline)
-
+    def load_lokal_baseline(self):
+        dic = {}
+        if os.path.exists(BASELINE_NAME):
+            with open(BASELINE_NAME,"r") as opfile:
+                dic = self._to_baseline(json.load(opfile))
+        return dic
 
     async def _start_baseline(self, data):
         # Record baseline, subscribe to feed
         # Make sure E4 is connected
         cmd_lst = data.split(" ")
-        if cmd_lst[0] == "OLD":
+        if cmd_lst[0] != "NEW":
             # Try to load to already recorded baseline
-            response = " Baseline loaded, start developing!"
-            if self._baseline == None:
-                response = " No earlier recorded baseline."
-                # Let extension know a new baseline must be loaded
-                await self.send(START_BASELINE+" "+FAIL_STR+response)
-                return None
-            baseline = await self._read_baseline()
-            # Create E4 prediction model
-            self._E4_model = machine_learning.E4model(baseline)
-            # Let extension know baseline is loaded
-            await self.send(START_BASELINE+" "+SUCCESS_STR+response)
+            baseline = self.load_lokal_baseline()
+            if not baseline:
+                await self.send(f"{START_BASELINE} {FAIL_STR} OLD")
+            else:
+                self._baseline = baseline
+                self._E4_model = machine_learning.E4model(self._baseline)
+                await self.send(f"{START_BASELINE} {SUCCESS_STR} OLD")
         else:
-            response = " Baseline set, start developing!"
             # Check if E4 is connected
             if self.settings["devices"]["E4"]:
-                # Wait for the whole baseline to be recorded
                 await asyncio.sleep(BASELINE_TIME+3)
-                # Get data to be converted to baseline
-                stream_data = self._E4_handler.get_data(BASELINE_TIME)
-                # Create baseline
+                try:
+                    stream_data = self._E4_handler.get_data(BASELINE_TIME)
+                except Exception:
+                    await self._send_error(ERR_E4_DATA_RAISE)
                 self._baseline = self._to_baseline(stream_data)
-                # Save baseline lokaly, loading baseline is now possible
                 await self._save_baseline(stream_data)
+
                 # Create E4 prediction model
                 self._E4_model = machine_learning.E4model(self._baseline)
-                # Let extension know the new baseline is set
-                await self.send(START_BASELINE +" "+ SUCCESS_STR+response)
+                await self.send(f"{START_BASELINE} {SUCCESS_STR} NEW")
             else:
                 # Let extension know that connection to E4 is required to create
                 # a new baseline
-                response = " E4 not connected, connect the device and try again!"
-                await self.send(START_BASELINE +" "+ FAIL_STR+response)
+                await self.send(f"{START_BASELINE} {FAIL_STR} NEW")
 
     async def _end_server(self, data):
         await self._save_actions()
@@ -293,43 +283,48 @@ class VSCServer:
     async def _connect_E4(self, data):
         await self._E4_handler.connect(data)
 
+    async def _exit_actions(self, device, deactivate=False):
+        for a in self.actions:
+            if device in self.actions[a]["devices"]:
+                try:
+                    await self.actions[a]["obj"].exit()
+                except asyncio.CancelledError:
+                    print(f"Cancelled task '{a}'.")
+                self.actions[a]["running"] = False
+                if a in self.act_waiting:
+                    del self.act_waiting[a]
+                if deactivate:
+                    self.actions[a]["active"] = False
+
+
     async def _disconnect_E4(self, data):
-        self._E4_handler.disconnect()
+        # await self._exit_actions("E4")
+        await self._E4_handler.disconnect()
 
 
     async def _start_eyetracker(self, data):
         self.eye_tracker.start()
-        await self.send(START_EYE +" "+ SUCCESS_STR)
+        await self.send(f"{START_EYE} {SUCCESS_STR}")
 
     async def _stop_eyetracker(self, data):
         self.eye_tracker.stop()
-        await self.send(STOP_EYE +" "+ SUCCESS_STR)
+        await self.send(f"{STOP_EYE} {SUCCESS_STR}")
 
     async def _recalibrate_eyetracker(self, data):
         self.eye_tracker.recalibrate()
-        await self.send(RECALIBRATE_EYE +" "+ SUCCESS_STR)
+        await self.send(f"{RECALIBRATE_EYE} {SUCCESS_STR}")
 
     async def _scan_E4(self, data):
         address_lst = await self._E4_handler.scan_for_e4()
         if address_lst:
-            msg = SCAN_E4 +" "+ SUCCESS_STR
-            for address in address_lst:
-                msg += " " + address
-            await self.send(msg)
+            address_str = " ".join(address_lst)
+            await self.send(f"{SCAN_E4} {SUCCESS_STR} {address_str}")
         else:
-            await self.send(SCAN_E4 +" "+ FAIL_STR)
+            await self.send(f"{SCAN_E4} {FAIL_STR}")
     
-    async def _lost_E4_connection(self):
-        for f in self.actions:
-            if "E4" in self.actions[f]["devices"]:
-                try:
-                    await self.actions[f]["obj"].exit()
-                except asyncio.CancelledError:
-                    print(f"Action '{f}' was cancelled due to connection lost to E4")
-                self.actions[f]["running"] = False
-                if f in self.act_waiting:
-                    del self.act_waiting[f]
-        await self.send(E4_LOST_CONNECTION + " Lost connection to device.")
+    async def _lost_E4_connection(self, reason):
+        self._exit_actions("E4")
+        await self.send(f"{E4_LOST_CONNECTION} {reason}")
 
     async def _connected_confirmation(self):
         self.settings["devices"]["E4"] = True
