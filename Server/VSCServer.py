@@ -4,12 +4,13 @@ from VSCServerMessages import *
 from e4Handler import E4
 from ActionFactory import action_factory
 import asyncio
-import sys
+import sys, os
 import json
 import numpy as np
 
-sys.path.append("../machine_learning")
-sys.path.append("../")
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../machine_learning"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 import machine_learning
 
@@ -25,7 +26,7 @@ class GazePoint:
         pass
 
 BASELINE_TIME = 30 # Last 30 seconds
-BASELINE_NAME = "lokal_baseline.json"
+BASELINE_NAME = os.path.join(os.path.dirname(__file__), "lokal_baseline.json")
 
 def blahblah():
     with open(BASELINE_NAME,"r") as opfile:
