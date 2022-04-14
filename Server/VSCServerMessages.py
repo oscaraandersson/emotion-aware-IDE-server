@@ -27,3 +27,14 @@ FAIL_STR = "FAIL"
 INIT_FORM = "IFRM"
 E4_LOST_CONNECTION = "LCE4"
 ACTION_STR = "ACT"
+
+
+#                     #
+#   Errors messages   #
+#                     #
+ERR_SERVER = 400
+ERR_INVALID_CMD = 401
+ERR_PORT_OCCUPIED = 402
+ERR_NOT_AN_ACTION = 420
+ERR_NOT_A_SETTING = 425
+ERR_E4_DATA_RAISE = 430

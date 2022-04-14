@@ -36,9 +36,6 @@ class Action:
         self.NAME = "ACT1"
         self.CLIENT_ACTION = True
         self.DEVICES = []
-        # If an action is dependent on another action
-        # !OBS! If dependent on another action, its device
-        # dependencies are transferred over to this actions DEVICES
         self.ACTIONS = []
         # --------------------------------------------
         # Do not worry about these
@@ -90,14 +87,15 @@ class Action:
             if self.running:
                 # Do work
                 await self._execute()
+    
     # -------------------------------------
     # -------- Messaging client -----------
     # -------------------------------------
+
     def client_response(self, data):
         if self.running:
-            # Save response to class variable
+            # Response from client saved in class variable
             self._client_answer_message = data
-            # Let action know message have been recieved
             self.client_answer_lock.set()        
     
     async def _msg_client(self, data):
@@ -105,18 +103,18 @@ class Action:
         await self.serv.action_send(self.NAME, data)
 
     async def _msg_client_wait(self, data):
-        # Send message to client
+        # Send message to client and wait for response
         await self.serv.action_send_wait(self.NAME, data)
-        # Wait for response
+        
         await self.client_answer_lock.wait()
-        # Response recieved, reset lock for use next time
         self.client_answer_lock.clear()
-        # Return recieved message
+
         return self._client_answer_message
 
     # ---------------------------------------------
     # ------------- Safe deactivation -------------
     # ---------------------------------------------
+
     def observe(self, act):
         self._subscriptions.append(act)
     
@@ -194,10 +192,12 @@ class SurveyAction(Action):
 
     async def _execute(self):
         # Request mood from extension, wait for response
-        FILE_NAME = "training_data.json"
         message = await self._msg_client_wait("MOOD")
         # Get data to pair mood with
-        latest_data = self.serv._E4_handler.get_data(self.DATA_RANGE)
+        try:
+            latest_data = self.serv._E4_handler.get_data(self.DATA_RANGE)
+        except Exception:
+            return None
         # Add mood to data
         del latest_data["timestamp"]
         instance = self.serv._E4_model.get_instance(self._convert(latest_data))
@@ -262,5 +262,4 @@ class TestAction(Action):
         self.NAME = "TEST"
     
     async def _execute(self):
-        print("Sending")
         print(await self._msg_client_wait("Tjabba"))
