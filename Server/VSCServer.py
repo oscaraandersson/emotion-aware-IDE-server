@@ -20,6 +20,7 @@ import machine_learning
 BASELINE_TIME = 30 # Last 30 seconds
 BASELINE_NAME = "lokal_baseline.json"
 
+from Eyetracker.gazepoint import Livestream
 
 class VSCServer:
     def __init__(self, port=1339):
@@ -295,10 +296,12 @@ class VSCServer:
     async def _start_eyetracker(self, data):
         print("Starting eyetracker")
         self.eye_tracker.run(True)
+        self.settings["devices"]["EYE"] = True
         await self.send(f"{START_EYE} {SUCCESS_STR}")
 
     async def _stop_eyetracker(self, data):
         self.eye_tracker.run(False)
+        self.settings["devices"]["EYE"] = False
         await self.send(f"{STOP_EYE} {SUCCESS_STR}")
 
     async def _recalibrate_eyetracker(self, data):

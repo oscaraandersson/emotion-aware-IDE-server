@@ -272,20 +272,19 @@ class StuckAction(Action):
         self.xcoords = []
         self.ycoords = []
         self.last_sec = []
+    async def _execute(self):
         self.gazetracker = self.serv.eye_tracker.gazetracker
-    def _execute(self):
         coordinate = self.gazetracker.get_gaze_position()
         if coordinate[0] is not None and coordinate[1] is not None:
-            last_sec.append(coordinate)
-        if len(last_sec) >= 60:
+            self.last_sec.append(coordinate)
+        if len(self.last_sec) >= 60:
             x_sum = 0
             y_sum = 0
-            for coord in last_sec:
+            for coord in self.last_sec:
                 x_sum += coord[0]
                 y_sum += coord[1]
-            coordinate = (x_sum/len(last_sec),y_sum/len(last_sec))
-            last_sec = []
-            print(coordinate)
+            coordinate = (x_sum/len(self.last_sec),y_sum/len(self.last_sec))
+            self.last_sec = []
             if coordinate[0] is not None: 
                 if len(self.xcoords) > 12:
                     self.xcoords.pop(0)
