@@ -35,7 +35,12 @@ BASELINE_NAME = os.path.join(os.path.dirname(__file__), "lokal_baseline.json")
 class VSCServer:
     def __init__(self, port=1339):
         self.errh = ErrorHandler()
-        self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection)
+        is_dummy = False
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "True":
+                is_dummy = True
+
+        self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection, is_dummy)
         self._E4_model = None
         self.eye_tracker = GazePoint()
         self._baseline = None

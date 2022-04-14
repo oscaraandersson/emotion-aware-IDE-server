@@ -2,6 +2,7 @@ import asyncio
 import time
 from bleak import BleakClient
 from bleak import BleakScanner
+import dummyE4
 
 """
 Handle lookup:
@@ -24,7 +25,7 @@ SECONDS_TO_SAVE = 30
 
 class E4:
 
-    def __init__(self, onfunc, offunc):
+    def __init__(self, onfunc, offunc, is_dummy):
         self.dataObject = {
                 "EDA": [0]*SECONDS_TO_SAVE*4,
                 "BVP": [0]*SECONDS_TO_SAVE*64,
@@ -33,6 +34,9 @@ class E4:
                 }
         self._onfunc = onfunc
         self._offunc = offunc
+        self.is_dummy = is_dummy
+        if (self.is_dummy):
+            self.dummy = dummyE4.DummyE4()
 
     async def scan_for_e4(self):
         scanner = BleakScanner()
@@ -50,23 +54,28 @@ class E4:
         return wristband
 
     def disconnected(self, client):
+        if self.is_dummy:
+            self.is_dummy = False
         self._offunc()
 
     # returns the last n seconds of data
     def get_data(self, n):
-        dataObject = {
-                "EDA": [],
-                "BVP": [],
-                "TEMP": [],
-                "HR": [],
-                "timestamp": 0
-                }
-        dataObject["EDA"] = self.dataObject["EDA"][-4*n:]
-        dataObject["BVP"] = self.dataObject["BVP"][-64*n:]
-        dataObject["TEMP"] = self.dataObject["ST"][-4*n:]
-        dataObject["timestamp"] = self.dataObject["timestamp"]
-        dataObject["HR"] = [item * 2 / 5 for item in
-                self.dataObject["BVP"][-1*n:]]
+        if (self.is_dummy):
+            return self.dummy.get_data(n)
+        else:
+            dataObject = {
+                    "EDA": [],
+                    "BVP": [],
+                    "TEMP": [],
+                    "HR": [],
+                    "timestamp": 0
+                    }
+            dataObject["EDA"] = self.dataObject["EDA"][-4*n:]
+            dataObject["BVP"] = self.dataObject["BVP"][-64*n:]
+            dataObject["TEMP"] = self.dataObject["ST"][-4*n:]
+            dataObject["timestamp"] = self.dataObject["timestamp"]
+            dataObject["HR"] = [item * 2 / 5 for item in
+                    self.dataObject["BVP"][-1*n:]]
         return dataObject
 
 
@@ -114,30 +123,36 @@ class E4:
         self.dataObject["timestamp"] = time.time()
 
     async def connect(self, deviceId):
-        scanner = BleakScanner()
-        await scanner.start()
-        self.client = BleakClient(deviceId)
-        try:
-            await self.client.connect()
-            if self.client.is_connected:
-                self.client.set_disconnected_callback(self.disconnected)
-                tasks = []
-                for ntify in NOTIFY_DATA:
-                    tasks.append(self.client.start_notify(ntify,
-                        self.notify_func))
+        if (self.is_dummy):
+            await self._onfunc()
+            while self.is_dummy:
+                await asyncio.sleep(5)
+            self._offunc()
+        else:
+            scanner = BleakScanner()
+            await scanner.start()
+            self.client = BleakClient(deviceId)
+            try:
+                await self.client.connect()
+                if self.client.is_connected:
+                    self.client.set_disconnected_callback(self.disconnected)
+                    tasks = []
+                    for ntify in NOTIFY_DATA:
+                        tasks.append(self.client.start_notify(ntify,
+                            self.notify_func))
 
-                tasks.append(self.client.write_gatt_char(36, bytearray(
-                    [1]+list(round(time.time()).to_bytes(8, 'little'))[:-4])))
-                await asyncio.gather(*tasks)
-                await scanner.stop()
-        except Exception as e:
-            raise Exception("Could not connect to E4 device.")
-        await self._onfunc()
-        while True:
-            if not self.client.is_connected:
-                await self._offunc()
-                break
-            await asyncio.sleep(5)
+                    tasks.append(self.client.write_gatt_char(36, bytearray(
+                        [1]+list(round(time.time()).to_bytes(8, 'little'))[:-4])))
+                    await asyncio.gather(*tasks)
+                    await scanner.stop()
+            except Exception as e:
+                raise Exception("Could not connect to E4 device.")
+            await self._onfunc()
+            while True:
+                if not self.client.is_connected:
+                    await self._offunc()
+                    break
+                await asyncio.sleep(5)
 
 
 async def main():
