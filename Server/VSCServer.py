@@ -1,9 +1,9 @@
 from asyncio import base_events
 from http import client
-from pickle import TRUE
 from Error_handler import ErrorHandler
 from VSCMessageHandler import MsgHandler
 from VSCServerMessages import *
+from e4Handler import E4
 from ActionFactory import action_factory
 import asyncio
 import sys
@@ -11,13 +11,10 @@ import json
 import os
 import numpy as np
 
-sys.path.append("Eyetracker")
-from gazepoint import Livestream
+sys.path.append("../machine_learning")
+sys.path.append("../")
 
-#sys.path.append("../machine_learning")
-#sys.path.append("../")
-
-#import machine_learning
+import machine_learning
 
 
 BASELINE_TIME = 30 # Last 30 seconds
