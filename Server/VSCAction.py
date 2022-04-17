@@ -37,6 +37,7 @@ class Action:
         self.CLIENT_ACTION = True
         self.DEVICES = []
         self.ACTIONS = []
+        self.active = False
         # --------------------------------------------
         # Do not worry about these
         
@@ -263,3 +264,5 @@ class TestAction(Action):
     
     async def _execute(self):
         print(await self._msg_client_wait("Tjabba"))
+
+
