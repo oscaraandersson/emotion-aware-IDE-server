@@ -17,26 +17,17 @@ sys.path.append("../")
 import machine_learning
 
 
-
-
-class GazePoint:
-    def start():
-        pass
-    def recalibrate():
-        pass
-    def stop():
-        pass
-
 BASELINE_TIME = 30 # Last 30 seconds
 BASELINE_NAME = "lokal_baseline.json"
 
+from Eyetracker.gazepoint import Livestream
 
 class VSCServer:
     def __init__(self, port=1339):
         self.errh = ErrorHandler()
-        self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection)
+        self._E4_handler = None
         self._E4_model = None
-        self.eye_tracker = GazePoint()
+        self.eye_tracker = Livestream()
         self._baseline = None
         self.settings = {
             "devices" : {"E4" : True, "EYE" : False, "EEG" : False},
@@ -303,11 +294,14 @@ class VSCServer:
 
 
     async def _start_eyetracker(self, data):
-        self.eye_tracker.start()
+        print("Starting eyetracker")
+        self.eye_tracker.run(True)
+        self.settings["devices"]["EYE"] = True
         await self.send(f"{START_EYE} {SUCCESS_STR}")
 
     async def _stop_eyetracker(self, data):
-        self.eye_tracker.stop()
+        self.eye_tracker.run(False)
+        self.settings["devices"]["EYE"] = False
         await self.send(f"{STOP_EYE} {SUCCESS_STR}")
 
     async def _recalibrate_eyetracker(self, data):
