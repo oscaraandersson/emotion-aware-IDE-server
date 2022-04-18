@@ -289,9 +289,13 @@ class VSCServer:
 
     async def _start_eyetracker(self, data):
         print("Starting eyetracker")
-        self.eye_tracker.run(True)
-        self.settings["devices"]["EYE"] = True
-        await self.send(f"{START_EYE} {SUCCESS_STR}")
+        try:
+            self.eye_tracker.run(True)
+            self.settings["devices"]["EYE"] = True
+            await self.send(f"{START_EYE} {SUCCESS_STR}")
+        except Exception:
+            await self.send(f"{START_EYE} {SUCCESS_STR}")
+
 
     async def _stop_eyetracker(self, data):
         self.eye_tracker.run(False)
