@@ -1,6 +1,8 @@
 from pprint import pformat
 import time
 import threading
+import json
+import webbrowser
 
 from Eyetracker.tools import OpenGazeTracker
 
@@ -9,6 +11,7 @@ class GazePoint(threading.Thread):
         threading.Thread.__init__(self)
         self.daemon = True
         self.interrupted = threading.Lock()
+        self.keywords = json.load(open("keywords.json"))
 
         self.gaze_position = (None, None)
 
@@ -49,6 +52,36 @@ class GazePoint(threading.Thread):
         while not self.interrupted.locked():
             time.sleep(sleep_time)
 
+    def am_stuck(self,text:str,x:str,y:str):
+        code_words = text.split(' ')
+        found = False
+
+        if y == "top":
+            start = 0
+            end = len(code_words)
+            direction = 1
+        elif y == "middle":
+            start = len(code_words)//2
+            end = len(code_words)
+            direction = 1
+        elif y == "bottom":
+            start = len(code_words)-1
+            end = 0
+            direction = -1
+        
+        for index in range(start,end,direction):
+            if code_words[index] in self.keywords and found:
+                link = "https://www.w3schools.com/python/" + self.keywords[code_words[index]] + ".asp"
+                webbrowser.open(link, new=2)
+                found = True
+        
+        if not found:
+            webbrowser.open(r"https://upload.wikimedia.org/wikipedia/commons/1/14/Rubber_Duck_%288374802487%29.jpg", new=2)
+
+    def get_text():
+        """should retrieve the text from the server"""
+        pass
+
     def stuck_check(self, xmin, xmax, ymin, ymax):
         xstuck = False
         ystuck = False
@@ -63,19 +96,17 @@ class GazePoint(threading.Thread):
             elif xmax <= 1:
                 x_axis = 'right'
             
-            if ymax <= 1/4 and ymax >= 0:
+            if ymax <= 1/3 and ymax >= 0:
                 y_axis = 'top'
-            elif ymax <=1/2:
-                y_axis = 'middletop'
-            elif ymax <=3/4:
-                y_axis = 'middlebottom'
+            elif ymax <=2/3:
+                y_axis = 'middle'
             elif ymax <= 1:
                 y_axis = 'bottom'
 
             if (-0.1 > xmax or xmax > 1.1) or (-0.1 > ymax or ymax > 1.1):
-                return 'You are currently looking away from the screen. This will result in a pay cut.'
+                return (-1,-1)
 
-            return ('ATTENTION! Your eyes seems to have gotten stuck '+str(y_axis + x_axis))
+            return (y_axis, x_axis)
 
 class Livestream():
     def __init__(self):
@@ -121,10 +152,9 @@ class Livestream():
                     ycoords.pop(0)
                 ycoords.append(coordinate[1])
             if len(xcoords) > 8:
-                stuck = self.gazetracker.stuck_check(min(xcoords),max(xcoords),min(ycoords),max(ycoords))
-                if stuck is not None:
-                    print(stuck)
-
+                y_stuck,x_stuck = self.gazetracker.stuck_check(min(xcoords),max(xcoords),min(ycoords),max(ycoords))
+                if y_stuck is not None:
+                    self.gazetracker.am_stuck(self.gazetracker.get_text(),x_stuck,y_stuck)
 
 if __name__ == '__main__':
     stream = Livestream()  
