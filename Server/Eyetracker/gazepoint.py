@@ -90,7 +90,7 @@ class Livestream():
             self.gazetracker = GazePoint()
             self.stream = True
         else:
-            if self.stream:
+            if self.stream and self.gazetrack is not None:
                 self.gazetracker.stop()
                 self.stream = False
 
