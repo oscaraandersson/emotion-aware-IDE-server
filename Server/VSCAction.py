@@ -263,3 +263,68 @@ class TestAction(Action):
     
     async def _execute(self):
         print(await self._msg_client_wait("Tjabba"))
+
+class StuckAction(Action):
+    def __init__(self, frequency, serv):
+        super().__init__(frequency, serv)
+        self.NAME = "STUCK"
+        self.DEVICES = ["EYE"]
+        self.xcoords = []
+        self.ycoords = []
+        self.last_sec = []
+    async def _execute(self):
+        self.gazetracker = self.serv.eye_tracker.gazetracker
+        coordinate = self.gazetracker.get_gaze_position()
+        if coordinate[0] is not None and coordinate[1] is not None:
+            self.last_sec.append(coordinate)
+        if len(self.last_sec) >= 60:
+            x_sum = 0
+            y_sum = 0
+            for coord in self.last_sec:
+                x_sum += coord[0]
+                y_sum += coord[1]
+            coordinate = (x_sum/len(self.last_sec),y_sum/len(self.last_sec))
+            self.last_sec = []
+            if coordinate[0] is not None: 
+                if len(self.xcoords) > 12:
+                    self.xcoords.pop(0)
+                self.xcoords.append(coordinate[0])
+            if coordinate[1] is not None:
+                if len(self.ycoords) > 12:
+                    self.ycoords.pop(0)
+                self.ycoords.append(coordinate[1])
+            if len(self.xcoords) > 8:
+                stuck = self.gazetracker.stuck_check(min(self.xcoords),max(self.xcoords),min(self.ycoords),max(self.ycoords))
+                if stuck is not None:
+                    print(stuck)
+
+class ActionBreak(Action):
+    def __init__(self, frequency, serv):
+        super().__init__(frequency, serv)
+        self.NAME = "BRK"
+        self.DEVICES = ["E4"]
+        self.frequency = frequency
+
+    async def _execute(self):
+        # read the last x minutes from the emotions file 
+        PATH = "../Dashboard/Sensors/emotions.csv"
+        df = pd.read_csv(PATH)
+        now = time.time.now()
+        # frequency = 1 / s
+        past = now - (1 / self.frequency) # now - s
+        df = df[df['timestamps'] > past]
+        emotion_values = list(df['emotion'].values)
+
+        stress_count = 0
+
+        for emotion in emotion_values:
+            if emotion == 1:
+                stress_count += 1
+
+        if stress_count >= len(emotion_values) * 0.7: # if 70% of the predicted emotions are stressed
+            msg = 'take_break'
+            self._msg_client(msg)
+        else:
+            msg = 'continue_working'
+            self._msg_client(msg)
+

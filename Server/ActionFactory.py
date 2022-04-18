@@ -2,7 +2,7 @@ from VSCAction import *
 def action_factory(serv):
     action_lst = [
         SurveyAction(1/10, serv), TestAction(1/10, serv),
-        EstimatedEmotion(1/10, serv)]
+        EstimatedEmotion(1/10, serv), StuckAction(60, serv), ActionBreak(1/30, serv)]
     action_dict = {}
     try:
         for a in action_lst:
