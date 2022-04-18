@@ -266,3 +266,33 @@ class TestAction(Action):
         print(await self._msg_client_wait("Tjabba"))
 
 
+class ActionBreak(Action):
+    def __init__(self, frequency, serv):
+        super().__init__(frequency, serv)
+        self.NAME = "BRK"
+        self.DEVICES = ["E4"]
+        self.frequency = frequency
+
+    async def _execute(self):
+        # read the last x minutes from the emotions file 
+        PATH = "../Dashboard/Sensors/emotions.csv"
+        df = pd.read_csv(PATH)
+        now = time.time.now()
+        # frequency = 1 / s
+        past = now - (1 / self.frequency) # now - s
+        df = df[df['timestamps'] > past]
+        emotion_values = list(df['emotion'].values)
+
+        stress_count = 0
+
+        for emotion in emotion_values:
+            if emotion == 1:
+                stress_count += 1
+
+        if stress_count >= len(emotion_values) * 0.7: # if 70% of the predicted emotions are stressed
+            msg = 'take_break'
+            await self._msg_client(msg)
+        else:
+            msg = 'continue_working'
+            await self._msg_client(msg)
+
