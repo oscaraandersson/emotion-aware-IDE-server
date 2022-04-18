@@ -6,26 +6,33 @@ from VSCServerMessages import *
 from e4Handler import E4
 from ActionFactory import action_factory
 import asyncio
-import sys
+import sys, os
 import json
 import os
 import numpy as np
 
-sys.path.append("../machine_learning")
-sys.path.append("../")
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../machine_learning"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 import machine_learning
 
 
 BASELINE_TIME = 30 # Last 30 seconds
-BASELINE_NAME = "lokal_baseline.json"
+BASELINE_NAME = os.path.join(os.path.dirname(__file__), "lokal_baseline.json")
 
 from Eyetracker.gazepoint import Livestream
 
 class VSCServer:
     def __init__(self, port=1339):
         self.errh = ErrorHandler()
-        self._E4_handler = None
+
+        is_dummy = False
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "True":
+                is_dummy = True
+
+        self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection, is_dummy)
         self._E4_model = None
         self.eye_tracker = Livestream()
         self._baseline = None
