@@ -296,7 +296,8 @@ class StuckAction(Action):
             if len(self.xcoords) > 8:
                 stuck = self.gazetracker.stuck_check(min(self.xcoords),max(self.xcoords),min(self.ycoords),max(self.ycoords))
                 if stuck is not None:
-                    print(stuck)
+                    textt = await self._msg_client_wait("hello")
+
 
 class ActionBreak(Action):
     def __init__(self, frequency, serv):
