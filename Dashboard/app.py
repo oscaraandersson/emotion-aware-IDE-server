@@ -253,4 +253,4 @@ def update_pie(date,start,end):
 
 
 if __name__ == '__main__':
-    app.run_server(host='localhost', debug=True)
+    app.run_server(host='localhost', debug=False)
