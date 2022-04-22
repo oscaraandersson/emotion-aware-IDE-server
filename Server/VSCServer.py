@@ -14,14 +14,15 @@ import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../machine_learning"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "./Eyetracker"))
 
 import machine_learning
+from gazepoint import Livestream
 
 
 BASELINE_TIME = 30 # Last 30 seconds
 BASELINE_NAME = os.path.join(os.path.dirname(__file__), "lokal_baseline.json")
 
-from Eyetracker.gazepoint import Livestream
 
 class VSCServer:
     def __init__(self, port=1339):
@@ -37,7 +38,7 @@ class VSCServer:
         self.eye_tracker = Livestream()
         self._baseline = None
         self.settings = {
-            "devices" : {"E4" : True, "EYE" : False, "EEG" : False},
+            "devices" : {"E4" : False, "EYE" : False, "EEG" : False},
             "setup" : True
         }
         self.actions = action_factory(self)
@@ -58,14 +59,21 @@ class VSCServer:
             "AACT": self._activate_action,
             "DACT": self._deactivate_action,
             "EACT": self._edit_action,
-            "ACT": self._action_response
+            "ACT" : self._action_response
         }
     
     async def run(self):
         try:
             await self.handler_task
         except asyncio.CancelledError:
-            print("Server shut down successfull.")
+            pass
+        except KeyboardInterrupt:
+            self.handler_task.cancel()
+        finally:
+            self._kill_eyetracker()
+            # Turn off E4
+        print("Server shutdown successful")
+
 
     async def _activation_check(self, act):
         def actions_traverse(visited, current):
@@ -127,7 +135,7 @@ class VSCServer:
         cmd_parts = data.split(" ")
         a = cmd_parts[0]
         if not a in self.actions:
-            self._send_error(ERR_NOT_AN_ACTION, a)
+            await self._send_error(ERR_NOT_AN_ACTION, a)
             return
         cmd_parts = cmd_parts[1:]
         not_changed = []
@@ -291,28 +299,38 @@ class VSCServer:
 
     async def _disconnect_E4(self, data):
         # await self._exit_actions("E4")
-        await self._E4_handler.disconnect()
+        # await self._E4_handler.disconnect()
+        await self._exit_actions("E4")
+        await self.send(f"{DISCONNECT_E4} {SUCCESS_STR}")
 
 
     async def _start_eyetracker(self, data):
-        print("Starting eyetracker")
         try:
-            self.eye_tracker.run(True)
+            self.eye_tracker.run(True, int(data))
             self.settings["devices"]["EYE"] = True
+            await self._activate_active_actions()
             await self.send(f"{START_EYE} {SUCCESS_STR}")
-        except Exception:
-            await self.send(f"{START_EYE} {SUCCESS_STR}")
-
-
+        except Exception as e:
+            print(e)
+            await self.send(f"{START_EYE} {FAIL_STR}")
+    
+    def _kill_eyetracker(self):
+        self.eye_tracker.run(False)
+        
     async def _stop_eyetracker(self, data):
+        print("Turning off eyetracker")
+        await self._exit_actions("EYE")
         self.eye_tracker.run(False)
         self.settings["devices"]["EYE"] = False
         await self.send(f"{STOP_EYE} {SUCCESS_STR}")
 
     async def _recalibrate_eyetracker(self, data):
-        self.eye_tracker.recalibrate()
-        await self.send(f"{RECALIBRATE_EYE} {SUCCESS_STR}")
-
+        if self.eye_tracker.gazetracker is not None:
+            # Make into function in LiveStream object
+            self.eye_tracker.gazetracker.tracker.calibrate()
+            await self.send(f"{RECALIBRATE_EYE} {SUCCESS_STR}")
+        else:
+            await self.send(f"{RECALIBRATE_EYE} {FAIL_STR}")
     async def _scan_E4(self, data):
         address_lst = await self._E4_handler.scan_for_e4()
         if address_lst:

@@ -276,6 +276,7 @@ class StuckAction(Action):
     async def _execute(self):
         self.gazetracker = self.serv.eye_tracker.gazetracker
         coordinate = self.gazetracker.get_gaze_position()
+
         if coordinate[0] is not None and coordinate[1] is not None:
             self.last_sec.append(coordinate)
         if len(self.last_sec) >= 60:
