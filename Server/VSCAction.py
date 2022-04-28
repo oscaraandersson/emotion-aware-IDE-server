@@ -221,7 +221,7 @@ class EstimatedEmotion(Action):
     
     def _save_prediction(self, index):
         # Check if csv file already exists
-        FILE_NAME = os.path.join(os.path.dirname(__file__), "../Dashboard/Sensors/emotions.csv")
+        FILE_NAME = os.path.join(os.path.dirname(__file__), "../Dashboard/assets/emotions.csv")
         df = None
 
         if os.path.exists(FILE_NAME):

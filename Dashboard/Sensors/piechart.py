@@ -2,7 +2,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 import pandas as pd
 import plotly.express as px
-
+import os
 import datetime
 import numpy as np
 
@@ -11,7 +11,7 @@ class Piechart:
         self.df = self.get_df()
     
     def get_df(self):
-        df = pd.read_csv(Path(__file__).parent/"emotions.csv")
+        df = pd.read_csv(os.path.join(os.path.dirname(__file__), "../assets/emotions.csv"))
         return df
 
     def filter_df(self,df,date,time_range):
