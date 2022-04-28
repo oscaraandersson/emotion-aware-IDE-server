@@ -53,7 +53,15 @@ class GazePoint(threading.Thread):
             time.sleep(sleep_time)
 
     def am_stuck(self,text:str,x:str,y:str):
+        """
+        args:\n
+        text: Visible text\n
+        y = top/middle/bottom\n
+        x = left/right
+        """
         code_words = text.split(' ')
+        code_words = list(filter(lambda val: val !=  " ", code_words))
+        code_words = list(filter(lambda val: val !=  "", code_words))
         found = False
 
         if y == "top":
@@ -70,7 +78,7 @@ class GazePoint(threading.Thread):
             direction = -1
         
         for index in range(start,end,direction):
-            if code_words[index] in self.keywords and found:
+            if code_words[index] in self.keywords and not found:
                 link = "https://www.w3schools.com/python/" + self.keywords[code_words[index]] + ".asp"
                 webbrowser.open(link, new=2)
                 found = True
@@ -155,6 +163,7 @@ class Livestream():
                 y_stuck,x_stuck = self.gazetracker.stuck_check(min(xcoords),max(xcoords),min(ycoords),max(ycoords))
                 if y_stuck is not None:
                     self.gazetracker.am_stuck(self.gazetracker.get_text(),x_stuck,y_stuck)
+                    xcoords,ycoords = []
 
 if __name__ == '__main__':
     stream = Livestream()  
