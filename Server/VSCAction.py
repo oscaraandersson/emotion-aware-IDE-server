@@ -310,11 +310,11 @@ class ActionBreak(Action):
         # read the last x minutes from the emotions file 
         PATH = "../Dashboard/Sensors/emotions.csv"
         df = pd.read_csv(PATH)
-        now = time.time.now()
+        now = time.time()
         # frequency = 1 / s
         past = now - (1 / self.frequency) # now - s
         df = df[df['timestamps'] > past]
-        emotion_values = list(df['emotion'].values)
+        emotion_values = list(df['emotions'].values)
 
         stress_count = 0
 
@@ -324,8 +324,8 @@ class ActionBreak(Action):
 
         if stress_count >= len(emotion_values) * 0.7: # if 70% of the predicted emotions are stressed
             msg = 'take_break'
-            self._msg_client(msg)
+            await self._msg_client(msg)
         else:
             msg = 'continue_working'
-            self._msg_client(msg)
+            await self._msg_client(msg)
 
