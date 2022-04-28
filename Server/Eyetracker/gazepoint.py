@@ -8,10 +8,11 @@ from Eyetracker.tools import OpenGazeTracker
 
 class GazePoint(threading.Thread):
     def __init__(self, ip='127.0.0.1', port=4242):
+        self.tracker = None
         threading.Thread.__init__(self)
         self.daemon = True
         self.interrupted = threading.Lock()
-        self.keywords = json.load(open("keywords.json"))
+        self.keywords = json.load(open("Eyetracker/keywords.json"))
 
         self.gaze_position = (None, None)
 
@@ -38,9 +39,10 @@ class GazePoint(threading.Thread):
         self.tracker.enable_send_data(True)
 
     def close(self):
-        print('Closing connection to Gaze Point device, this takes about 5 seconds')
-        self.tracker.enable_send_data(False)
-        self.tracker.close()
+        if self.tracker is not None:
+            print('Closing connection to Gaze Point device, this takes about 5 seconds')
+            self.tracker.enable_send_data(False)
+            self.tracker.close()
 
     def __del__(self):
         self.close()
@@ -120,18 +122,23 @@ class Livestream():
     def __init__(self):
         self.stream = False
         self.gazetracker = None  
-    def run(self, command):
+
+    def run(self, command, port=4242):
         '''Starts or stops the streaming'''
-        print("Started")
         if not isinstance(command, bool):
             raise ValueError('Only Boolean values are allowed')
         if command:
-            self.gazetracker = GazePoint()
-            self.stream = True
+            try:
+                self.stream = True
+                self.gazetracker = GazePoint("127.0.0.1", port)
+            except Exception:
+                raise Exception("Port not available.")
         else:
-            if self.stream and self.gazetrack is not None:
+            if self.stream and self.gazetracker is not None:
+                print("Disconnecting")
                 self.gazetracker.stop()
                 self.stream = False
+                self.gazetracker = None
 
     def stream(self):
         '''Function for livestreaming the eyetracker'''

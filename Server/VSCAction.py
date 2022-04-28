@@ -37,6 +37,7 @@ class Action:
         self.CLIENT_ACTION = True
         self.DEVICES = []
         self.ACTIONS = []
+        self.active = False
         # --------------------------------------------
         # Do not worry about these
         
@@ -58,9 +59,10 @@ class Action:
     # ------------------------------------------------
     async def start(self):
         # Starts the scheduler, waits for main_task to be done
-        self.running = True
-        self.main_task = asyncio.create_task(self._scheduler())
-        await self.main_task
+        if not self.running:
+            self.running = True
+            self.main_task = asyncio.create_task(self._scheduler())
+            await self.main_task
     
     async def exit(self):
         # Resets variables if action is to be activated again
@@ -193,16 +195,18 @@ class SurveyAction(Action):
     async def _execute(self):
         # Request mood from extension, wait for response
         message = await self._msg_client_wait("MOOD")
-        # Get data to pair mood with
-        try:
-            latest_data = self.serv._E4_handler.get_data(self.DATA_RANGE)
-        except Exception:
-            return None
-        # Add mood to data
-        del latest_data["timestamp"]
-        instance = self.serv._E4_model.get_instance(self._convert(latest_data))
 
-        self._save_instance(instance, int(message))
+        if message != "0":
+            # Get data to pair mood with
+            try:
+                latest_data = self.serv._E4_handler.get_data(self.DATA_RANGE)
+            except Exception:
+                return None
+            # Add mood to data
+            del latest_data["timestamp"]
+            instance = self.serv._E4_model.get_instance(self._convert(latest_data))
+
+            self._save_instance(instance, int(message))
 
 
 class EstimatedEmotion(Action):
@@ -264,6 +268,31 @@ class TestAction(Action):
     async def _execute(self):
         print(await self._msg_client_wait("Tjabba"))
 
+
+class Test2Action(Action):
+    def __init__(self, frequency, serv):
+        super().__init__(frequency, serv)
+        self.NAME = "TEST2"
+        self.ACTIONS = ["TEST"]
+        self.DEVICES = ["TEST"]
+        self.CLIENT_ACTION = True
+
+class Test3Action(Action):
+    def __init__(self, frequency, serv):
+        super().__init__(frequency, serv)
+        self.NAME = "TEST3"
+        self.DEVICES = ["TEST2"]
+        
+
+class Test4Action(Action):
+    def __init__(self, frequency, serv):
+        super().__init__(frequency, serv)
+        self.NAME = "TEST4"
+        self.ACTIONS = ["TEST3"]
+        self.DEVICES = ["TEST2"]
+        self.CLIENT_ACTION = True
+
+
 class StuckAction(Action):
     def __init__(self, frequency, serv):
         super().__init__(frequency, serv)
@@ -275,6 +304,7 @@ class StuckAction(Action):
     async def _execute(self):
         self.gazetracker = self.serv.eye_tracker.gazetracker
         coordinate = self.gazetracker.get_gaze_position()
+
         if coordinate[0] is not None and coordinate[1] is not None:
             self.last_sec.append(coordinate)
         if len(self.last_sec) >= 60:
