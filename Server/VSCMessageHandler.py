@@ -20,10 +20,11 @@ class MsgHandler:
     async def send(self, msg):
         if self.running:
             try:
-                self._writer.write(bytes((msg)+"\\", "utf-8"))
+                self._writer.write(bytes(msg, "utf-8"))
                 await self._writer.drain()
             except Exception as e:
                 print(e)
+
     def exit(self):
         if self.running:
             self.running = False
@@ -41,6 +42,7 @@ class MsgHandler:
         # task_r = asyncio.create_task(self._handle_input(reader))
         self._writer = writer
         try:
+            #await task_r
             await self._handle_input(reader)
         except asyncio.exceptions.IncompleteReadError as e:
             print(e)
@@ -48,16 +50,16 @@ class MsgHandler:
         except OSError as e:
             print(e)
             self.exit()
-        self._writer.close()
-        await self._writer.wait_closed()
     
     async def _handle_input(self, reader):
         running_tasks = []
         input_loop = True
         while input_loop:
             msg = await reader.readuntil(b"\t\n")
+            print(msg)
             msg = msg.decode("utf-8")[:-2]
             running_tasks.append(asyncio.create_task(self.notify_func(msg)))
             if msg == END_MSG:
+                print("Shutting")
                 input_loop = False
         await asyncio.gather(*running_tasks)
