@@ -22,7 +22,7 @@
     "__init__()":"python_classes",
     "self.":"python_inheritance",
     "iter(":"python_iterators",
-    "datetime":"python_datetimes",
+    "datetime":"python_datetime",
     "min":"python_math",
     "max":"python_math",
     "input":"python_user_input",
