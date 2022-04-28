@@ -30,7 +30,7 @@ class E4model():
     def predict(self, signal_values):
         sc = load(dirname + '/scaler.joblib')
         instance = sc.transform(np.array([self.get_instance(signal_values)]))
-        print(instance)
-        prediction = self.model(torch.tensor(instance, dtype=torch.float32))
-        return list(prediction.detach().numpy())
+        prediction = (self.model(torch.tensor(instance, dtype=torch.float32)))
+        ret = prediction.tolist()[0]
+        return ret 
 
