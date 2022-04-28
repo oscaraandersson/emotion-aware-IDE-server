@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import copy
 import os
 import matplotlib.pyplot as plt
 
@@ -81,9 +82,12 @@ if train == True:
     X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.1, random_state=1, stratify=y)
     data_set = dataset(X_train, Y_train)
 
+    best_model = None
+    best_acc = 0
+
     #some parameters
     learning_rate = 0.01
-    epochs = 250
+    epochs = 400
     criterion = nn.BCELoss()
     k = 10
     splits = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
@@ -131,8 +135,12 @@ if train == True:
             if torch.equal(m[i], y_test[i]):
                 correct += 1
 
+        acc = correct/total
+        if acc > best_acc:
+            best_model = copy.deepcopy(model)
         accuracies.append(correct/total)
         print('Fold: ', fold + 1, ': accuracy of the model on test set : ', correct / total)
+
     avg_acc = sum(accuracies)/len(accuracies)
     print(f'The average accuracy is: {avg_acc}')
 
