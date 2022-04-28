@@ -340,11 +340,11 @@ class ActionBreak(Action):
         # read the last x minutes from the emotions file 
         PATH = "../Dashboard/Sensors/emotions.csv"
         df = pd.read_csv(PATH)
-        now = time.time.now()
+        now = time.time()
         # frequency = 1 / s
         past = now - (1 / self.frequency) # now - s
         df = df[df['timestamps'] > past]
-        emotion_values = list(df['emotion'].values)
+        emotion_values = list(df['emotions'].values)
 
         stress_count = 0
 
