@@ -38,13 +38,15 @@ class VSCServer:
         self.eye_tracker = Livestream()
         self._baseline = None
         self.settings = {
-            "devices" : {"E4" : False, "EYE" : False, "EEG" : False},
+            "devices" : {"E4" : False, "EYE" : False, "EEG" : False, "TEST" : False, "TEST2" : False},
             "setup" : True
         }
         self.actions = action_factory(self)
         self.act_waiting = {}
         self.msg_handler = MsgHandler(port, self._handle_incomming_msg)
+        self.handler_task = None
         self.handler_task = asyncio.create_task(self.msg_handler.start())
+        
         self.done_lock = asyncio.Event()
         self.cmd_dict = {
             "FRM" : self._save_form_data,         # Form, training AI
@@ -61,6 +63,7 @@ class VSCServer:
             "EACT": self._edit_action,
             "ACT" : self._action_response
         }
+
     
     async def run(self):
         try:
@@ -69,6 +72,8 @@ class VSCServer:
             pass
         except KeyboardInterrupt:
             self.handler_task.cancel()
+        except RuntimeError:
+            pass
         finally:
             self._kill_eyetracker()
             # Turn off E4
@@ -94,6 +99,8 @@ class VSCServer:
     async def _activate_action(self, msg):
         # Desired actions splitted with a space
         action_lst = msg.split(' ')
+        if action_lst == ['']:
+            action_lst = []
         # action which device(s) are not connected
         cannot_activate = []
         for a in action_lst:
@@ -117,6 +124,8 @@ class VSCServer:
 
     async def _deactivate_action(self, msg):
         action_lst = msg.split(' ')
+        if action_lst == ['']:
+            action_lst = []
         client_actions = []
         # Deactivate all actions
         for act in action_lst:
@@ -264,8 +273,12 @@ class VSCServer:
 
     async def _end_server(self, data):
         await self._save_actions()
-        self.handler_task.cancel()
-    
+        try:
+            self.msg_handler.exit()
+            self.handler_task.cancel()
+        except asyncio.exceptions.CancelledError:
+            pass
+
     async def _save_actions(self):
         pass
 
