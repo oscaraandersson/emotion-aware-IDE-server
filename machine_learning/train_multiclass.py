@@ -56,8 +56,8 @@ def accuracy(y_pred, y_test):
     correct
     return correct / total
 
-train = True
-# train = False
+# train = True
+train = False
 
 if train == True:
     # Arousal and valence has the same data but different labels
