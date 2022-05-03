@@ -8,10 +8,11 @@ from Eyetracker.tools import OpenGazeTracker
 
 class GazePoint(threading.Thread):
     def __init__(self, ip='127.0.0.1', port=4242):
+        self.tracker = None
         threading.Thread.__init__(self)
         self.daemon = True
         self.interrupted = threading.Lock()
-        self.keywords = json.load(open("keywords.json"))
+        self.keywords = json.load(open("Eyetracker/keywords.json"))
 
         self.gaze_position = (None, None)
 
@@ -38,9 +39,10 @@ class GazePoint(threading.Thread):
         self.tracker.enable_send_data(True)
 
     def close(self):
-        print('Closing connection to Gaze Point device, this takes about 5 seconds')
-        self.tracker.enable_send_data(False)
-        self.tracker.close()
+        if self.tracker is not None:
+            print('Closing connection to Gaze Point device, this takes about 5 seconds')
+            self.tracker.enable_send_data(False)
+            self.tracker.close()
 
     def __del__(self):
         self.close()
@@ -53,7 +55,15 @@ class GazePoint(threading.Thread):
             time.sleep(sleep_time)
 
     def am_stuck(self,text:str,x:str,y:str):
+        """
+        args:\n
+        text: Visible text\n
+        y = top/middle/bottom\n
+        x = left/right
+        """
         code_words = text.split(' ')
+        code_words = list(filter(lambda val: val !=  " ", code_words))
+        code_words = list(filter(lambda val: val !=  "", code_words))
         found = False
 
         if y == "top":
@@ -70,7 +80,7 @@ class GazePoint(threading.Thread):
             direction = -1
         
         for index in range(start,end,direction):
-            if code_words[index] in self.keywords and found:
+            if code_words[index] in self.keywords and not found:
                 link = "https://www.w3schools.com/python/" + self.keywords[code_words[index]] + ".asp"
                 webbrowser.open(link, new=2)
                 found = True
@@ -112,18 +122,23 @@ class Livestream():
     def __init__(self):
         self.stream = False
         self.gazetracker = None  
-    def run(self, command):
+
+    def run(self, command, port=4242):
         '''Starts or stops the streaming'''
-        print("Started")
         if not isinstance(command, bool):
             raise ValueError('Only Boolean values are allowed')
         if command:
-            self.gazetracker = GazePoint()
-            self.stream = True
+            try:
+                self.stream = True
+                self.gazetracker = GazePoint("127.0.0.1", port)
+            except Exception:
+                raise Exception("Port not available.")
         else:
-            if self.stream and self.gazetrack is not None:
+            if self.stream and self.gazetracker is not None:
+                print("Disconnecting")
                 self.gazetracker.stop()
                 self.stream = False
+                self.gazetracker = None
 
     def stream(self):
         '''Function for livestreaming the eyetracker'''
@@ -155,6 +170,7 @@ class Livestream():
                 y_stuck,x_stuck = self.gazetracker.stuck_check(min(xcoords),max(xcoords),min(ycoords),max(ycoords))
                 if y_stuck is not None:
                     self.gazetracker.am_stuck(self.gazetracker.get_text(),x_stuck,y_stuck)
+                    xcoords,ycoords = []
 
 if __name__ == '__main__':
     stream = Livestream()  

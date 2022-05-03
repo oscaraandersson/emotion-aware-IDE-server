@@ -5,6 +5,7 @@ import sys
 import numpy as np
 from .train_multiclass import Model
 import feature_extraction
+from joblib import load
 
 dirname = os.path.dirname(os.path.realpath(__file__))
 class E4model():
@@ -27,7 +28,9 @@ class E4model():
         return self.fe.create_instance(signal_values)
 
     def predict(self, signal_values):
-        instance = self.get_instance(signal_values)
-        prediction = self.model(torch.tensor(instance, dtype=torch.float32))
-        return list(prediction.detach().numpy())
+        sc = load(dirname + '/scaler.joblib')
+        instance = sc.transform(np.array([self.get_instance(signal_values)]))
+        prediction = (self.model(torch.tensor(instance, dtype=torch.float32)))
+        ret = prediction.tolist()[0]
+        return ret 
 

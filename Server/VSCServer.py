@@ -14,17 +14,18 @@ import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../machine_learning"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "./Eyetracker"))
 
 import machine_learning
+from gazepoint import Livestream
 
 
 BASELINE_TIME = 30 # Last 30 seconds
 BASELINE_NAME = os.path.join(os.path.dirname(__file__), "lokal_baseline.json")
 
-from Eyetracker.gazepoint import Livestream
 
 class VSCServer:
-    def __init__(self, port=1339):
+    def __init__(self, port=1337):
         self.errh = ErrorHandler()
 
         is_dummy = False
@@ -37,13 +38,15 @@ class VSCServer:
         self.eye_tracker = Livestream()
         self._baseline = None
         self.settings = {
-            "devices" : {"E4" : True, "EYE" : False, "EEG" : False},
+            "devices" : {"E4" : False, "EYE" : False, "EEG" : False, "TEST" : False, "TEST2" : False},
             "setup" : True
         }
         self.actions = action_factory(self)
         self.act_waiting = {}
         self.msg_handler = MsgHandler(port, self._handle_incomming_msg)
+        self.handler_task = None
         self.handler_task = asyncio.create_task(self.msg_handler.start())
+        
         self.done_lock = asyncio.Event()
         self.cmd_dict = {
             "FRM" : self._save_form_data,         # Form, training AI
@@ -58,26 +61,36 @@ class VSCServer:
             "AACT": self._activate_action,
             "DACT": self._deactivate_action,
             "EACT": self._edit_action,
-            "ACT": self._action_response
+            "ACT" : self._action_response
         }
+
     
     async def run(self):
         try:
             await self.handler_task
         except asyncio.CancelledError:
-            print("Server shut down successfull.")
+            pass
+        except KeyboardInterrupt:
+            self.handler_task.cancel()
+        except RuntimeError:
+            pass
+        finally:
+            self._kill_eyetracker()
+            # Turn off E4
+        print("Server shutdown successful")
+
 
     async def _activation_check(self, act):
         def actions_traverse(visited, current):
             visited.add(current)
-            if not self.actions[current]["act"]:
+            if not self.actions[current].ACTIONS:
                 return visited
-            for a in self.actions[current]["act"]:
+            for a in self.actions[current].ACTIONS:
                 if not a in visited:
                     visited.update(actions_traverse(visited, a))
             return visited
 
-        for d in self.actions[act]["devices"]:
+        for d in self.actions[act].DEVICES:
             if not self.settings["devices"][d]:
                 return []
         
@@ -86,6 +99,8 @@ class VSCServer:
     async def _activate_action(self, msg):
         # Desired actions splitted with a space
         action_lst = msg.split(' ')
+        if action_lst == ['']:
+            action_lst = []
         # action which device(s) are not connected
         cannot_activate = []
         for a in action_lst:
@@ -94,11 +109,10 @@ class VSCServer:
                 print("Activating: " + str(depend_act))
                 # Check that all required devices are connected
                 for d in depend_act:
-                    if not self.actions[d]["running"]:
-                        self.actions[d]["active"] = True
-                        self.actions[d]["running"] = True
-                        asyncio.create_task(self.actions[d]["obj"].start())
-                if not depend_act and self.actions[a]["client"]:
+                    if not self.actions[d].running:
+                        self.actions[d].active = True
+                        asyncio.create_task(self.actions[d].start())
+                if not depend_act and self.actions[a].CLIENT_ACTION:
                     cannot_activate.append(a)
         if cannot_activate:
             # Return all actions which could not be connected
@@ -110,15 +124,16 @@ class VSCServer:
 
     async def _deactivate_action(self, msg):
         action_lst = msg.split(' ')
+        if action_lst == ['']:
+            action_lst = []
         client_actions = []
         # Deactivate all actions
         for act in action_lst:
-            shut_down = await self.actions[act]['obj'].exit()
+            shut_down = await self.actions[act].exit()
             print("Shutting down: " + str(shut_down))
             for a in shut_down:
-                self.actions[a]["active"] = False
-                self.actions[a]["running"] = False
-                if self.actions[a]["client"]:
+                self.actions[a].active = False
+                if self.actions[a].CLIENT_ACTION:
                     client_actions.append(a)
                 if a in self.act_waiting:
                     del self.act_waiting[a]
@@ -129,15 +144,15 @@ class VSCServer:
         cmd_parts = data.split(" ")
         a = cmd_parts[0]
         if not a in self.actions:
-            self._send_error(ERR_NOT_AN_ACTION, a)
+            await self._send_error(ERR_NOT_AN_ACTION, a)
             return
         cmd_parts = cmd_parts[1:]
         not_changed = []
         not_a_setting = []
         for i in range(0,len(cmd_parts), 2):
             s = cmd_parts[i]
-            if s in self.actions[a]["obj"].settings:
-                changed = self.actions[a]["obj"].settings[s](cmd_parts[i+1])
+            if s in self.actions[a].settings:
+                changed = self.actions[a].settings[s](cmd_parts[i+1])
                 if not changed:
                     not_changed.append(s)
             else:
@@ -151,9 +166,6 @@ class VSCServer:
             await self.send(f"{EDIT_ACTION} {FAIL_STR} {not_chngd}")
         if not (not_a_setting and not_changed):
             await self.send(f"{EDIT_ACTION} {SUCCESS_STR}")
-
-        
-
 
     async def _handle_incomming_msg(self, msg):
         # Message format CMD {Data}
@@ -185,7 +197,7 @@ class VSCServer:
     async def action_send_wait(self, act, data):
         msg = f"{ACTION_STR} {act} {data}"
         # Put the action in waiting list
-        self.act_waiting[act] = self.actions[act]["obj"].client_response
+        self.act_waiting[act] = self.actions[act].client_response
         await self.send(msg)
 
     async def _action_response(self, msg):
@@ -261,8 +273,12 @@ class VSCServer:
 
     async def _end_server(self, data):
         await self._save_actions()
-        self.handler_task.cancel()
-    
+        try:
+            self.msg_handler.exit()
+            self.handler_task.cancel()
+        except asyncio.exceptions.CancelledError:
+            pass
+
     async def _save_actions(self):
         pass
 
@@ -272,49 +288,61 @@ class VSCServer:
     async def _activate_active_actions(self):
         for a in self.actions.keys():
             all_devices_connected = True
-            for d in self.actions[a]["devices"]:
+            for d in self.actions[a].DEVICES:
                 if not self.settings["devices"][d]:
                     all_devices_connected = False
-            if self.actions[a]["active"] and all_devices_connected:
-                await self.actions[a]["obj"].start()
+            if self.actions[a].active and all_devices_connected:
+                await self.actions[a].start()
 
     async def _connect_E4(self, data):
         await self._E4_handler.connect(data)
 
     async def _exit_actions(self, device, deactivate=False):
         for a in self.actions:
-            if device in self.actions[a]["devices"]:
-                try:
-                    await self.actions[a]["obj"].exit()
-                except asyncio.CancelledError:
-                    print(f"Cancelled task '{a}'.")
-                self.actions[a]["running"] = False
+            if device in self.actions[a].DEVICES:
+                await self.actions[a].exit()
+                print(f"Shutting {a}.")
                 if a in self.act_waiting:
                     del self.act_waiting[a]
                 if deactivate:
-                    self.actions[a]["active"] = False
+                    self.actions[a].active = False
 
 
     async def _disconnect_E4(self, data):
         # await self._exit_actions("E4")
-        await self._E4_handler.disconnect()
+        # await self._E4_handler.disconnect()
+        print("Disconnecting")
+        await self._exit_actions("E4")
+        await self.send(f"{DISCONNECT_E4} {SUCCESS_STR}")
 
 
     async def _start_eyetracker(self, data):
-        print("Starting eyetracker")
-        self.eye_tracker.run(True)
-        self.settings["devices"]["EYE"] = True
-        await self.send(f"{START_EYE} {SUCCESS_STR}")
-
+        try:
+            self.eye_tracker.run(True, int(data))
+            self.settings["devices"]["EYE"] = True
+            await self._activate_active_actions()
+            await self.send(f"{START_EYE} {SUCCESS_STR}")
+        except Exception as e:
+            print(e)
+            await self.send(f"{START_EYE} {FAIL_STR}")
+    
+    def _kill_eyetracker(self):
+        self.eye_tracker.run(False)
+        
     async def _stop_eyetracker(self, data):
+        print("Turning off eyetracker")
+        await self._exit_actions("EYE")
         self.eye_tracker.run(False)
         self.settings["devices"]["EYE"] = False
         await self.send(f"{STOP_EYE} {SUCCESS_STR}")
 
     async def _recalibrate_eyetracker(self, data):
-        self.eye_tracker.recalibrate()
-        await self.send(f"{RECALIBRATE_EYE} {SUCCESS_STR}")
-
+        if self.eye_tracker.gazetracker is not None:
+            # Make into function in LiveStream object
+            self.eye_tracker.gazetracker.tracker.calibrate()
+            await self.send(f"{RECALIBRATE_EYE} {SUCCESS_STR}")
+        else:
+            await self.send(f"{RECALIBRATE_EYE} {FAIL_STR}")
     async def _scan_E4(self, data):
         address_lst = await self._E4_handler.scan_for_e4()
         if address_lst:
