@@ -81,30 +81,30 @@ class E4:
         self._E4_client.callback('E4_Tag', self._TAG)
 
     def _BVP(self, timestamp, data):
-        if len(self.dataObject["BVP"]) % (SECONDS_TO_SAVE*64) == 0:
-            self.dataObject.pop(0)
         self.dataObject["BVP"].append(data[0])
+        if len(self.dataObject["BVP"]) % ((SECONDS_TO_SAVE*64)+1) == 0:
+            self.dataObject["BVP"].pop(0)
         
     def _ACC(self, timestamp, data):
-        print("ACC", timestamp, data)
+        pass
 
     def _GSR(self, timestamp, data):
-        if len(self.dataObject["EDA"]) % (SECONDS_TO_SAVE*4) == 0:
-            self.dataObject.pop(0)
         self.dataObject["EDA"].append(data[0])
+        if len(self.dataObject["EDA"]) % ((SECONDS_TO_SAVE*4)+1) == 0:
+            self.dataObject["EDA"].pop(0)
 
     def _TEMP(self, timestamp, data):
-        if len(self.dataObject["TEMP"]) % (SECONDS_TO_SAVE*4) == 0:
-            self.dataObject.pop(0)
         self.dataObject["TEMP"].append(data[0])
+        if len(self.dataObject["TEMP"]) % ((SECONDS_TO_SAVE*4)+1) == 0:
+            self.dataObject["TEMP"].pop(0)
 
     def _IBI(self, timestamp, data):
-        print("IBI",timestamp, data)
+        pass
 
     def _HR(self, timestamp, data):
-        if len(self.dataObject["HR"]) % (SECONDS_TO_SAVE) == 0:
-            self.dataObject.pop(0)
         self.dataObject["HR"].append(data[0])
+        if len(self.dataObject["HR"]) % (SECONDS_TO_SAVE+1) == 0:
+            self.dataObject["HR"].pop(0)
 
     def _BATTERY(self, timestamp, data):
         pass
@@ -194,7 +194,7 @@ class E4:
     def get_data(self, no_seconds):
         if no_seconds > SECONDS_TO_SAVE:
             raise Exception(f"To many seconds. Only the last {SECONDS_TO_SAVE} seconds are stored.")
-        if no_seconds > len(data_object["HR"]):
+        if no_seconds > len(self.dataObject["HR"]):
             raise Exception("There is not enough data.")
         data_object = {}
         data_object["EDA"] = self.dataObject["EDA"][-4*no_seconds:]

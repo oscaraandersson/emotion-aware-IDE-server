@@ -297,15 +297,18 @@ class VSCServer:
                 await self.actions[a].start()
 
     async def _connect_E4(self, data):
+        await self._E4_handler.connect_to_server(data)
         connected = await self._E4_handler.connect_E4()
+        print("connected")
         if connected:
-            self._E4_handler.subscribe_to(E4data.BVP)
-            self._E4_handler.subscribe_to(E4data.GSR)
-            self._E4_handler.subscribe_to(E4data.IBI)
-            self._E4_handler.subscribe_to(E4data.TEMP)
-            self.send(f"{CONNECT_E4} {SUCCESS_STR}")
+            await self._E4_handler.subscribe_to(E4data.BVP)
+            await self._E4_handler.subscribe_to(E4data.GSR)
+            await self._E4_handler.subscribe_to(E4data.IBI)
+            await self._E4_handler.subscribe_to(E4data.TEMP)
+            self.settings["devices"]["E4"] = True
+            await self.send(f"{CONNECT_E4} {SUCCESS_STR}")
         else:
-            self.send(f"{CONNECT_E4} {FAIL_STR}")
+            await self.send(f"{CONNECT_E4} {FAIL_STR}")
 
 
     async def _exit_actions(self, device, deactivate=False):
