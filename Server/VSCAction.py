@@ -327,6 +327,7 @@ class StuckAction(Action):
                 stuck = self.gazetracker.stuck_check(min(self.xcoords),max(self.xcoords),min(self.ycoords),max(self.ycoords))
                 if stuck is not None:
                     textt = await self._msg_client_wait("hello")
+                    
 
 
 class ActionBreak(Action):
@@ -335,6 +336,21 @@ class ActionBreak(Action):
         self.NAME = "BRK"
         self.DEVICES = ["E4"]
         self.frequency = frequency
+        self.percentage = 0.7
+        self.emotion = "1"
+        self.settings["CERT"] = self._set_certainty
+        self.settings["EMO"] = self._set_emotion
+
+    def _set_certainty(self, cert_str):
+        changed = True
+        try:
+            self.percentage = float(cert_str)
+        except Exception:
+            changed = False
+        return changed
+    
+    def _set_emotion(self, emotion):
+        pass
 
     async def _execute(self):
         # read the last x minutes from the emotions file 
@@ -352,7 +368,7 @@ class ActionBreak(Action):
             if emotion == 1:
                 stress_count += 1
 
-        if stress_count >= len(emotion_values) * 0.7: # if 70% of the predicted emotions are stressed
+        if stress_count >= len(emotion_values) * self.percentage: # if 70% of the predicted emotions are stressed
             msg = 'take_break'
             await self._msg_client(msg)
         else:

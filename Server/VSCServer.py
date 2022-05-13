@@ -3,13 +3,14 @@ from http import client
 from Error_handler import ErrorHandler
 from VSCMessageHandler import MsgHandler
 from VSCServerMessages import *
-from e4Handler import E4
 from ActionFactory import action_factory
+from e4_data import E4data
 import asyncio
 import sys, os
 import json
 import os
 import numpy as np
+from e4 import E4
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../machine_learning"))
@@ -33,7 +34,7 @@ class VSCServer:
             if sys.argv[1] == "True":
                 is_dummy = True
 
-        self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection, is_dummy)
+        self._E4_handler = E4()
         self._E4_model = None
         self.eye_tracker = Livestream()
         self._baseline = None
@@ -80,7 +81,7 @@ class VSCServer:
         print("Server shutdown successful")
 
 
-    async def _activation_check(self, act):
+    def _activation_check(self, act):
         def actions_traverse(visited, current):
             visited.add(current)
             if not self.actions[current].ACTIONS:
@@ -105,7 +106,7 @@ class VSCServer:
         cannot_activate = []
         for a in action_lst:
             if a in self.actions:
-                depend_act = await self._activation_check(a)
+                depend_act = self._activation_check(a)
                 print("Activating: " + str(depend_act))
                 # Check that all required devices are connected
                 for d in depend_act:
@@ -129,14 +130,15 @@ class VSCServer:
         client_actions = []
         # Deactivate all actions
         for act in action_lst:
-            shut_down = await self.actions[act].exit()
-            print("Shutting down: " + str(shut_down))
-            for a in shut_down:
-                self.actions[a].active = False
-                if self.actions[a].CLIENT_ACTION:
-                    client_actions.append(a)
-                if a in self.act_waiting:
-                    del self.act_waiting[a]
+            if act in self.actions:
+                shut_down = await self.actions[act].exit()
+                print("Shutting down: " + str(shut_down))
+                for a in shut_down:
+                    self.actions[a].active = False
+                    if self.actions[a].CLIENT_ACTION:
+                        client_actions.append(a)
+                    if a in self.act_waiting:
+                        del self.act_waiting[a]
         deactivated = " ".join(client_actions)
         await self.send(f"{DEACTIVATE_ACTION} {SUCCESS_STR} {deactivated}")
     
@@ -164,7 +166,7 @@ class VSCServer:
         if not_changed:
             not_chngd = " ".join(not_changed)
             await self.send(f"{EDIT_ACTION} {FAIL_STR} {not_chngd}")
-        if not (not_a_setting and not_changed):
+        if not (not_a_setting or not_changed):
             await self.send(f"{EDIT_ACTION} {SUCCESS_STR}")
 
     async def _handle_incomming_msg(self, msg):
@@ -295,7 +297,16 @@ class VSCServer:
                 await self.actions[a].start()
 
     async def _connect_E4(self, data):
-        await self._E4_handler.connect(data)
+        connected = await self._E4_handler.connect_E4()
+        if connected:
+            self._E4_handler.subscribe_to(E4data.BVP)
+            self._E4_handler.subscribe_to(E4data.GSR)
+            self._E4_handler.subscribe_to(E4data.IBI)
+            self._E4_handler.subscribe_to(E4data.TEMP)
+            self.send(f"{CONNECT_E4} {SUCCESS_STR}")
+        else:
+            self.send(f"{CONNECT_E4} {FAIL_STR}")
+
 
     async def _exit_actions(self, device, deactivate=False):
         for a in self.actions:
@@ -343,6 +354,7 @@ class VSCServer:
             await self.send(f"{RECALIBRATE_EYE} {SUCCESS_STR}")
         else:
             await self.send(f"{RECALIBRATE_EYE} {FAIL_STR}")
+
     async def _scan_E4(self, data):
         address_lst = await self._E4_handler.scan_for_e4()
         if address_lst:

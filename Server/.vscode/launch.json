@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "python": "D:/Users/Benis.Barker/EmoIDE/Server-side/venv/Scripts/python.exe"
         }
     ]
