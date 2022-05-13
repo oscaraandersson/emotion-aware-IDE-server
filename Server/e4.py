@@ -167,6 +167,10 @@ class E4:
         if response.split(' ')[2] == "OK":
             return True
         return False
+    
+    def get_data(self, no_seconds):
+        raise Exception("Not enough data.")
+        return {}
 
 
 
