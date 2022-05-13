@@ -3,13 +3,14 @@ from http import client
 from Error_handler import ErrorHandler
 from VSCMessageHandler import MsgHandler
 from VSCServerMessages import *
-from e4Handler import E4
 from ActionFactory import action_factory
+from e4_data import E4data
 import asyncio
 import sys, os
 import json
 import os
 import numpy as np
+from e4 import E4
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../machine_learning"))
@@ -33,7 +34,7 @@ class VSCServer:
             if sys.argv[1] == "True":
                 is_dummy = True
 
-        self._E4_handler = E4(self._connected_confirmation, self._lost_E4_connection, is_dummy)
+        self._E4_handler = E4()
         self._E4_model = None
         self.eye_tracker = Livestream()
         self._baseline = None
@@ -296,7 +297,16 @@ class VSCServer:
                 await self.actions[a].start()
 
     async def _connect_E4(self, data):
-        await self._E4_handler.connect(data)
+        connected = await self._E4_handler.connect_E4()
+        if connected:
+            self._E4_handler.subscribe_to(E4data.BVP)
+            self._E4_handler.subscribe_to(E4data.GSR)
+            self._E4_handler.subscribe_to(E4data.IBI)
+            self._E4_handler.subscribe_to(E4data.TEMP)
+            self.send(f"{CONNECT_E4} {SUCCESS_STR}")
+        else:
+            self.send(f"{CONNECT_E4} {FAIL_STR}")
+
 
     async def _exit_actions(self, device, deactivate=False):
         for a in self.actions:

@@ -4,6 +4,7 @@ from sre_constants import CALL
 from e4Client import E4Handler
 from enum import Enum
 import inspect
+import time
 
 class E4data(Enum):
     BVP = "bvp"
@@ -44,12 +45,20 @@ def handle_e4_subscription(s_str):
         return True
     return False
 
+SECONDS_TO_SAVE = 30
+
 class E4:
     def __init__(self):
         self._E4_client = E4Handler(self._dc_callback)
         self._connected = False
         self.dc_func = None
-        self.data = {}
+        self.dataObject = {
+                "EDA": [],
+                "BVP": [],
+                "TEMP": [],
+                "HR" : [],
+                "timestamp": 0
+                }
         self._add_callbacks()
     
     async def __aenter__(self):
@@ -72,17 +81,31 @@ class E4:
         self._E4_client.callback('E4_Tag', self._TAG)
 
     def _BVP(self, timestamp, data):
-        print("BVP", timestamp, data)
+        if len(self.dataObject["BVP"]) % (SECONDS_TO_SAVE*64) == 0:
+            self.dataObject.pop(0)
+        self.dataObject["BVP"].append(data[0])
+        
     def _ACC(self, timestamp, data):
         print("ACC", timestamp, data)
+
     def _GSR(self, timestamp, data):
-        print("GSR", timestamp, data)
+        if len(self.dataObject["EDA"]) % (SECONDS_TO_SAVE*4) == 0:
+            self.dataObject.pop(0)
+        self.dataObject["EDA"].append(data[0])
+
     def _TEMP(self, timestamp, data):
-        print("TEMP",timestamp,data)
+        if len(self.dataObject["TEMP"]) % (SECONDS_TO_SAVE*4) == 0:
+            self.dataObject.pop(0)
+        self.dataObject["TEMP"].append(data[0])
+
     def _IBI(self, timestamp, data):
         print("IBI",timestamp, data)
+
     def _HR(self, timestamp, data):
-        print("HR", timestamp, data)
+        if len(self.dataObject["HR"]) % (SECONDS_TO_SAVE) == 0:
+            self.dataObject.pop(0)
+        self.dataObject["HR"].append(data[0])
+
     def _BATTERY(self, timestamp, data):
         pass
     def _TAG(self, timestamp, data):
@@ -169,8 +192,17 @@ class E4:
         return False
     
     def get_data(self, no_seconds):
-        raise Exception("Not enough data.")
-        return {}
+        if no_seconds > SECONDS_TO_SAVE:
+            raise Exception(f"To many seconds. Only the last {SECONDS_TO_SAVE} seconds are stored.")
+        if no_seconds > len(data_object["HR"]):
+            raise Exception("There is not enough data.")
+        data_object = {}
+        data_object["EDA"] = self.dataObject["EDA"][-4*no_seconds:]
+        data_object["BVP"] = self.dataObject["BVP"][-64*no_seconds:]
+        data_object["TEMP"] = self.dataObject["TEMP"][-4*no_seconds:]
+        data_object["HR"] = self.dataObject["HR"][-1*no_seconds:]
+        data_object["timestamp"] = time.time()
+        return data_object
 
 
 
@@ -180,8 +212,8 @@ async def main():
     connected = await e4.connect_to_server()
     if connected:
         await e4.connect_E4()
-        await e4.subscribe_to(E4data.TEMP)
-        await asyncio.sleep(2)
+        await e4.subscribe_to(E4data.IBI)
+        await asyncio.sleep(10)
         await e4.disconnect_E4()
     await e4.exit()
 
