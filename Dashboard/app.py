@@ -15,6 +15,11 @@ from Sensors.eye_tracker import EyeTracker
 from Sensors.e4 import E4Wristband
 from Sensors.piechart import Piechart
 
+if not os.path.exists(os.path.join(os.path.dirname(__file__), "assets")):
+    os.makedirs(os.path.join(os.path.dirname(__file__), "assets"))
+with open(os.path.join(os.path.dirname(__file__), "assets/location"), "w+") as f:
+    f.write(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets")))
+
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 eye_tracker = EyeTracker()
@@ -253,4 +258,4 @@ def update_pie(date,start,end):
 
 
 if __name__ == '__main__':
-    app.run_server(host='localhost', debug=True)
+    app.run_server(host='localhost', debug=False)
