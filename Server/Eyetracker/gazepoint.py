@@ -81,7 +81,7 @@ class GazePoint(threading.Thread):
         
         for index in range(start,end,direction):
             if code_words[index] in self.keywords and not found:
-                link = "https://www.w3schools.com/python/" + self.keywords[code_words[index]] + ".asp"
+                link = "https://docs.python.org/3/library/" + self.keywords[code_words[index]] + ".html"
                 webbrowser.open(link, new=2)
                 found = True
         
