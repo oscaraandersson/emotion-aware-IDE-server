@@ -50,7 +50,6 @@ def accuracy(y_pred, y_test):
     for i in range(m.shape[0]):
         if torch.equal(m[i], y_test[i]):
             correct += 1
-    correct
     return correct / total
 
 def label_to_onehot(lst):
